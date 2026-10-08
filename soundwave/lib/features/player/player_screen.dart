@@ -54,7 +54,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(song.title, style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                song.title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               Text(song.artist),
               const SizedBox(height: 8),
               Slider(

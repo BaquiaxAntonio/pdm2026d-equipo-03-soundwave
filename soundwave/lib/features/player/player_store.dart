@@ -8,7 +8,8 @@ import 'player_song_local.dart';
 // Estado in-memory solo para player, sin dependencias externas.
 // Motivo: persistencia en sesión sin esperar al estado global (issue #9).
 class PlayerStore extends ChangeNotifier {
-  PlayerStore({List<PlayerSongLocal>? songs}) : _songs = songs ?? mockPlayerSongs;
+  PlayerStore({List<PlayerSongLocal>? songs})
+    : _songs = songs ?? mockPlayerSongs;
 
   final List<PlayerSongLocal> _songs;
   final Set<String> blockedIds = {};
