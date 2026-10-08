@@ -144,6 +144,12 @@ Esta estructura busca mantener el proyecto organizado y permitir que la arquitec
 
 
 
+## 📄 Decisiones de arquitectura (ADR)
+
+Las decisiones técnicas relevantes se documentan como ADR en [`docs/adr/`](docs/adr/):
+
+* [ADR-0001 — Manejo de estado con Riverpod](docs/adr/0001-manejo-de-estado.md)
+
 \## 📝 Convención de nombres
 
 
