@@ -64,6 +64,15 @@ class PlayerStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // El Slider antes tenía onChanged vacío (control que no hacía nada).
+  // Motivo: seek real acotado a la duración para controles accesibles.
+  void seek(int seconds) {
+    final song = currentSong;
+    if (song == null) return;
+    progressSeconds = seconds.clamp(0, song.durationSeconds);
+    notifyListeners();
+  }
+
   // Issue #8: la bloqueada no vuelve a sonar en la sesión.
   void blockCurrent() {
     final song = currentSong;
