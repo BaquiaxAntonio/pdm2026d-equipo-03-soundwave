@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'features/player/player_screen.dart';
-
 void main() {
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -33,9 +31,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      // Demo temporal Jeffersson (issues #7/#8): muestra el player aislado.
-      // Revertir antes del PR grupal para no bloquear integración.
-      home: const PlayerScreen(),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
