@@ -7,18 +7,12 @@ class DownloadsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Descargas'),
-      ),
+      appBar: AppBar(title: const Text('Descargas')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.download,
-              size: 64,
-              color: AppColors.textSecondary,
-            ),
+            Icon(Icons.download, size: 64, color: AppColors.textSecondary),
             const SizedBox(height: AppSpacing.s16),
             Text(
               'Descargas',

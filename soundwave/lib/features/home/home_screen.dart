@@ -9,9 +9,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SoundWave'),
-      ),
+      appBar: AppBar(title: const Text('SoundWave')),
       body: SafeArea(
         child: SingleChildScrollView(
           child: ConstrainedBox(
@@ -25,15 +23,9 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: AppSpacing.s16),
-                  SongListSection(
-                    title: 'Recientes',
-                    songs: recentSongs,
-                  ),
+                  SongListSection(title: 'Recientes', songs: recentSongs),
                   const SizedBox(height: AppSpacing.s32),
-                  SongListSection(
-                    title: 'Favoritos',
-                    songs: favoriteSongs,
-                  ),
+                  SongListSection(title: 'Favoritos', songs: favoriteSongs),
                   const SizedBox(height: AppSpacing.s32),
                   SongListSection(
                     title: 'Recomendados',

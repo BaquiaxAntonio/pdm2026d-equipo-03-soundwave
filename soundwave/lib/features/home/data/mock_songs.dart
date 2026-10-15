@@ -20,7 +20,11 @@ const List<Song> recentSongs = [
 const List<Song> favoriteSongs = [
   Song(title: 'Starboy', artist: 'The Weeknd ft. Daft Punk', duration: '3:50'),
   Song(title: 'Get Lucky', artist: 'Daft Punk ft. Pharrell', duration: '6:09'),
-  Song(title: 'Instant Crush', artist: 'Daft Punk ft. Julian Casablancas', duration: '5:37'),
+  Song(
+    title: 'Instant Crush',
+    artist: 'Daft Punk ft. Julian Casablancas',
+    duration: '5:37',
+  ),
   Song(title: 'Around the World', artist: 'Daft Punk', duration: '7:10'),
 ];
 

@@ -7,11 +7,7 @@ class SongListSection extends StatelessWidget {
   final String title;
   final List<Song> songs;
 
-  const SongListSection({
-    super.key,
-    required this.title,
-    required this.songs,
-  });
+  const SongListSection({super.key, required this.title, required this.songs});
 
   @override
   Widget build(BuildContext context) {
@@ -33,10 +29,7 @@ class SongListSection extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s12),
             itemBuilder: (context, index) {
               final song = songs[index];
-              return SongCard(
-                song: song,
-                onTap: () {},
-              );
+              return SongCard(song: song, onTap: () {});
             },
           ),
         ),

@@ -6,11 +6,7 @@ class SongCard extends StatelessWidget {
   final Song song;
   final VoidCallback onTap;
 
-  const SongCard({
-    super.key,
-    required this.song,
-    required this.onTap,
-  });
+  const SongCard({super.key, required this.song, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
