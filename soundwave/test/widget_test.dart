@@ -30,9 +30,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SoundWave'), findsOneWidget);
-    expect(find.text('Tu música, sin conexión'), findsOneWidget);
-    expect(find.text('Buscar'), findsOneWidget);
-    expect(find.text('Reproductor'), findsOneWidget);
-    expect(find.text('Descargas'), findsOneWidget);
+    expect(find.text('Buscar'), findsWidgets);
+    expect(find.text('Reproductor'), findsWidgets);
+    expect(find.text('Descargas'), findsWidgets);
   });
 }

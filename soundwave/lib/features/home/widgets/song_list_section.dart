@@ -22,7 +22,7 @@ class SongListSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.s12),
         SizedBox(
-          height: 200,
+          height: 240,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: songs.length,

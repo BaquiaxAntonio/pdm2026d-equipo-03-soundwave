@@ -27,7 +27,7 @@ class SongCard extends StatelessWidget {
                 children: [
                   Container(
                     width: double.infinity,
-                    height: 120,
+                    height: 90,
                     decoration: BoxDecoration(
                       color: AppColors.surfaceElevated,
                       borderRadius: BorderRadius.circular(8),
