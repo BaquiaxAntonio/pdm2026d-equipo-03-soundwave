@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 
-import 'data/mock_songs.dart';
-import 'models/song.dart';
+import 'mock_search_data.dart';
+import 'search_filter_local.dart';
+import 'search_song_local.dart';
+import 'search_theme_local.dart';
+import 'song_row_local.dart';
 
+// Pantalla de búsqueda con propuesta visual SoundWave aplicada.
+// Motivo: buscador sticky + lista desplazable; filtrado local inmediato
+// sin cargas artificiales; estados inicial / resultados / vacío claros.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -11,266 +17,229 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  static const _backgroundColor = Color(0xFF0B1220);
-  static const _surfaceColor = Color(0xFF172235);
-  static const _accentColor = Color(0xFF2DD4BF);
-  static const _primaryTextColor = Color(0xFFF8FAFC);
-  static const _secondaryTextColor = Color(0xFFCBD5E1);
-
-  final _searchController = TextEditingController();
-  String _query = '';
-
-  List<Song> get _visibleSongs {
-    final normalizedQuery = _query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty) {
-      return mockSongs;
-    }
-
-    return mockSongs.where((song) {
-      return song.title.toLowerCase().contains(normalizedQuery) ||
-          song.artist.toLowerCase().contains(normalizedQuery);
-    }).toList();
-  }
-
-  bool get _hasQuery => _query.trim().isNotEmpty;
-
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() => _query = '');
-  }
+  final _controller = TextEditingController();
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final visibleSongs = _visibleSongs;
-    final baseTheme = Theme.of(context);
-    final localTheme = baseTheme.copyWith(
-      colorScheme: const ColorScheme.dark(
-        primary: _accentColor,
-        onPrimary: _backgroundColor,
-        surface: _surfaceColor,
-        onSurface: _primaryTextColor,
-      ),
-      scaffoldBackgroundColor: _backgroundColor,
-      textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: _accentColor,
-        selectionColor: Color(0x662DD4BF),
-        selectionHandleColor: _accentColor,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: _surfaceColor,
-        hintStyle: const TextStyle(color: _secondaryTextColor),
-        prefixIconColor: _secondaryTextColor,
-        suffixIconColor: _secondaryTextColor,
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: _accentColor, width: 2),
-        ),
-      ),
-    );
-
-    return Theme(
-      data: localTheme,
-      child: Scaffold(
-        body: SafeArea(
-          child: ListView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.all(24),
-            children: [
-              const Text(
-                'Buscar música',
-                style: TextStyle(
-                  color: _primaryTextColor,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Encuentra tu próximo favorito',
-                style: TextStyle(color: _secondaryTextColor, fontSize: 16),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _query = value),
-                style: const TextStyle(color: _primaryTextColor),
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  hintText: 'Busca una canción o artista',
-                  prefixIcon: const Icon(Icons.search),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
-                  ),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          constraints: const BoxConstraints(
-                            minWidth: 48,
-                            minHeight: 48,
+    return Scaffold(
+      backgroundColor: SearchThemeLocal.background,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Margen 24 habitual, 16 en pantallas muy estrechas.
+            final horizontal = constraints.maxWidth < 360
+                ? SearchThemeLocal.space16
+                : SearchThemeLocal.space24;
+            return Center(
+              child: ConstrainedBox(
+                // En ventanas amplias limita y centra para evitar filas largas.
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontal,
+                        SearchThemeLocal.space16,
+                        horizontal,
+                        SearchThemeLocal.space12,
+                      ),
+                      // Encabezado compacto para no restar espacio a la lista.
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Buscar música',
+                            style: SearchThemeLocal.screenTitle,
                           ),
-                          tooltip: 'Limpiar búsqueda',
-                          onPressed: _clearSearch,
-                          icon: const Icon(Icons.close),
+                          SizedBox(height: SearchThemeLocal.space4),
+                          Text(
+                            'Encuentra tu próximo favorito',
+                            style: SearchThemeLocal.artist,
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Buscador siempre visible; la lista desplaza debajo.
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: horizontal),
+                      child: TextSelectionTheme(
+                        data: const TextSelectionThemeData(
+                          cursorColor: SearchThemeLocal.accent,
+                          selectionColor: SearchThemeLocal.surfaceElevated,
+                          selectionHandleColor: SearchThemeLocal.accent,
                         ),
+                        child: ListenableBuilder(
+                          listenable: _controller,
+                          builder: (context, _) {
+                            final hasText = _controller.text.isNotEmpty;
+                            return TextField(
+                              controller: _controller,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: SearchThemeLocal.textPrimary,
+                              ),
+                              cursorColor: SearchThemeLocal.accent,
+                              textInputAction: TextInputAction.search,
+                              decoration:
+                                  SearchThemeLocal.searchDecoration(
+                                    hasText: hasText,
+                                  ).copyWith(
+                                    suffixIcon: hasText
+                                        ? IconButton(
+                                            tooltip: 'Limpiar búsqueda',
+                                            // Área táctil mínima 48x48.
+                                            constraints: const BoxConstraints(
+                                              minWidth: 48,
+                                              minHeight: 48,
+                                            ),
+                                            icon: const Icon(Icons.clear),
+                                            color:
+                                                SearchThemeLocal.textSecondary,
+                                            onPressed: _controller.clear,
+                                          )
+                                        : null,
+                                  ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: SearchThemeLocal.space12),
+                    Expanded(
+                      child: ListenableBuilder(
+                        listenable: _controller,
+                        builder: (context, _) {
+                          final query = _controller.text;
+                          final results = filterSearchSongs(
+                            mockSearchSongs,
+                            query,
+                          );
+                          if (query.trim().isEmpty) {
+                            return _SuggestionsList(results: results);
+                          }
+                          return _ResultsList(results: results);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                _hasQuery
-                    ? '${visibleSongs.length} '
-                          '${visibleSongs.length == 1 ? 'resultado' : 'resultados'}'
-                    : 'Sugerencias para ti',
-                style: const TextStyle(
-                  color: _primaryTextColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (visibleSongs.isEmpty)
-                const _EmptyResults()
-              else
-                ...visibleSongs.map(
-                  (song) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _SongTile(song: song),
-                  ),
-                ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _SongTile extends StatelessWidget {
-  const _SongTile({required this.song});
+class _SuggestionsList extends StatelessWidget {
+  final List<SearchSongLocal> results;
 
-  final Song song;
-
-  String get _formattedDuration {
-    final minutes = song.durationInSeconds ~/ 60;
-    final seconds = (song.durationInSeconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
+  const _SuggestionsList({required this.results});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 72),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: _SearchScreenState._surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: _SearchScreenState._accentColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.music_note,
-              color: _SearchScreenState._backgroundColor,
-            ),
+    return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.only(bottom: SearchThemeLocal.space32),
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: SearchThemeLocal.space24,
+            vertical: SearchThemeLocal.space8,
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  song.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _SearchScreenState._primaryTextColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  song.artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _SearchScreenState._secondaryTextColor,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
+          child: Text(
+            'Sugerencias para ti',
+            style: SearchThemeLocal.sectionTitle,
           ),
-          const SizedBox(width: 8),
-          Text(
-            _formattedDuration,
-            style: const TextStyle(
-              color: _SearchScreenState._secondaryTextColor,
-              fontSize: 14,
-            ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: SearchThemeLocal.space24),
+          child: Text(
+            // No se presenta como personalización real.
+            'Selección de muestra, no personalizada',
+            style: SearchThemeLocal.auxiliary,
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
+        ),
+        const SizedBox(height: SearchThemeLocal.space8),
+        for (final song in results) SongRowLocal(song: song),
+      ],
     );
   }
 }
 
-class _EmptyResults extends StatelessWidget {
-  const _EmptyResults();
+class _ResultsList extends StatelessWidget {
+  final List<SearchSongLocal> results;
+
+  const _ResultsList({required this.results});
+
+  @override
+  Widget build(BuildContext context) {
+    final count = results.length;
+    final label = count == 1 ? '1 resultado' : '$count resultados';
+    return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.only(bottom: SearchThemeLocal.space32),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: SearchThemeLocal.space24,
+            vertical: SearchThemeLocal.space8,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Resultados', style: SearchThemeLocal.sectionTitle),
+              const SizedBox(height: SearchThemeLocal.space4),
+              Text(label, style: SearchThemeLocal.auxiliary),
+            ],
+          ),
+        ),
+        if (results.isEmpty)
+          const _EmptyState()
+        else
+          for (final song in results) SongRowLocal(song: song),
+      ],
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48),
+      padding: EdgeInsets.all(SearchThemeLocal.space24),
       child: Column(
         children: [
+          SizedBox(height: SearchThemeLocal.space32),
           Icon(
             Icons.search_off,
             size: 48,
-            color: _SearchScreenState._accentColor,
+            color: SearchThemeLocal.textSecondary,
+            semanticLabel: 'Sin resultados',
           ),
-          SizedBox(height: 16),
+          SizedBox(height: SearchThemeLocal.space16),
           Text(
             'No encontramos canciones',
+            style: SearchThemeLocal.sectionTitle,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _SearchScreenState._primaryTextColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
           ),
-          SizedBox(height: 8),
+          SizedBox(height: SearchThemeLocal.space8),
           Text(
             'Prueba con otro título o artista',
+            style: SearchThemeLocal.artist,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _SearchScreenState._secondaryTextColor,
-              fontSize: 16,
-            ),
           ),
         ],
       ),
