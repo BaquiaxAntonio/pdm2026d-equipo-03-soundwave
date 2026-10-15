@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app_theme.dart';
 import 'features/downloads/downloads_screen.dart';
 import 'features/home/home_screen.dart';
@@ -6,7 +7,7 @@ import 'features/player/player_screen.dart';
 import 'features/search/search_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
