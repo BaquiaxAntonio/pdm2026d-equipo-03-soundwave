@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soundwave/main.dart';
 
 void main() {
   testWidgets('Home screen shows navigation buttons', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
     expect(find.text('SoundWave'), findsOneWidget);
     expect(find.text('Buscar'), findsOneWidget);
@@ -18,12 +19,14 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      MediaQuery(
-        data: const MediaQueryData(
-          textScaler: TextScaler.linear(1.5),
-          size: Size(320, 600),
+      ProviderScope(
+        child: MediaQuery(
+          data: const MediaQueryData(
+            textScaler: TextScaler.linear(1.5),
+            size: Size(320, 600),
+          ),
+          child: const MyApp(),
         ),
-        child: const MyApp(),
       ),
     );
 

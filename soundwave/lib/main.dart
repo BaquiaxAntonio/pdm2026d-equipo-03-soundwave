@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app_theme.dart';
-import 'features/downloads/downloads_screen.dart';
+import 'features/downloads/download_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
 import 'features/search/search_screen.dart';
@@ -37,7 +37,7 @@ class _MainShellState extends State<MainShell> {
     HomeScreen(),
     SearchScreen(),
     PlayerScreen(),
-    DownloadsScreen(),
+    DownloadScreen(),
   ];
 
   @override
