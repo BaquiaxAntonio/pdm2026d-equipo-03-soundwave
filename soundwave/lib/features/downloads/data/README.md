@@ -1,40 +1,54 @@
-# Base de descargas MVP-06
+# Descargas MVP-06
 
-Implementación inicial independiente de la API, todavía sin activar en la UI.
-Consume `DownloadRepository`, `AudioFileStore`, `Song`, `DownloadRecord` y los
-DAO compartidos de Henry; no abre otra conexión ni modifica el esquema.
+La implementación usa los contratos y DAO compartidos de Henry. Android abre
+SQLite y archivos en `getApplicationSupportDirectory()/downloads`; Chrome sigue
+con la demo explícita. No se modificó el esquema ni se añadió otro catálogo.
 
-- `LocalAudioFileStore` recibe un directorio privado de la aplicación. Crea
-  temporales `.part`, confirma mediante rename y devuelve rutas relativas.
-- `SqliteDownloadRepository` recibe la conexión compartida, el almacén y una
-  función `OpenDownload`. Esta función debe obtener audio permitido y validar
-  respuesta HTTP y tipo de contenido antes de entregar `DownloadInput`.
-- Cada operación persiste antes de notificar. No se marca `completed` hasta
-  terminar y confirmar un archivo no vacío con longitud esperada cuando existe.
-- Se rechazan duplicados; los reintentos fallidos empiezan desde cero. Los
-  errores conservan estado `failed` y no exponen una ruta disponible.
-- Ejecutar `recoverInterrupted()` una vez antes de habilitar transferencias:
-  detecta transferencias interrumpidas y archivos completados ausentes.
-- `requestRemoval` recibe el plazo desde el consumidor, conserva el archivo y
-  persiste `pendingDeletion`. `undoRemoval` recupera el registro durante el plazo.
-- Un único proveedor deberá ser dueño del repositorio y llamar `dispose()`
-  después de esperar sus operaciones. No cierra la conexión compartida.
+## Integración
 
-## Pendiente de integración
+- `downloadSessionProvider` es el punto único de acceso al repositorio y a las
+  canciones canónicas. Inicio, búsqueda y player pueden consumir
+  `downloadEntriesProvider` o `repository.watchDownloads()` sin recargar la app.
+- El propietario de API debe sobrescribir `openDownloadProvider` con
+  `HttpAudioDownloader(resolvePermittedAudio).open` o un adaptador compatible.
+  El resolver recibe `Song` y devuelve `PermittedAudio` con URL vigente y permiso
+  explícito. No hay endpoints, tokens ni proveedor ficticio en producción.
+- El transporte valida permiso, HTTPS, HTTP 200, MIME, timeout y longitud.
+  Las redirecciones se resuelven por el adaptador para revalidar el destino.
+- Hasta acordar formatos con la API, se acepta únicamente WAV PCM canónico,
+  validando cabecera, tamaños, canales, frecuencia y alineación. Otros formatos
+  fallan como no disponibles; no se presentan bytes arbitrarios como audio.
+- El propietario del motor debe sobrescribir `canDeleteAudioProvider`: devuelve
+  true solo después de soltar la pista. Sin coordinador, el valor seguro es false
+  y el registro/archivo se conserva pendiente, incluso tras vencer Deshacer.
+- `downloadUndoDurationProvider` es configurable; 4 segundos coincide con el
+  SnackBar existente. Es un valor reversible de interfaz, no política definitiva.
 
-1. Adaptador de la API elegida: permiso de descarga, HTTP, resolución de URL,
-   validación de audio/formato, timeout y cierre de recursos de red.
-2. Proveedor Android usando el directorio privado y conexión de Henry; demo Web
-   separada. Estos archivos con `dart:io` no se importan desde widgets Web.
-3. Conectar `DownloadScreen` al repositorio y filtrar eliminaciones pendientes.
-4. Acordar plazo de Deshacer y coordinación de pistas activas antes de finalizar
-   borrados vencidos, también al reiniciar. Aún no se finalizan automáticamente.
-5. Reconciliar archivos parciales y huérfanos (incluido fallo de SQLite después
-   de confirmar archivo); se conservan y no se ofrecen como canciones disponibles.
-6. Coordinar pertenencia a la colección offline con Inicio/reproductor y validar
-   audio y falta de espacio en Android. No se añadió otra fuente de catálogo.
+## Consistencia
 
-Pruebas: `flutter test test/features/downloads/sqlite_download_repository_test.dart`.
-Usan SQLite FFI y archivos temporales, sin llamadas a una API externa. La prueba
-de recreación del repositorio comparte conexión; la reapertura completa de la
-base también tiene cobertura en las pruebas de infraestructura de Henry.
+Los datos se escriben antes de notificar. Se guarda primero un temporal `.part`,
+se valida y confirma el archivo, y finalmente SQLite registra `completed` y la
+pertenencia a la colección offline. Los fallos no tienen ruta disponible.
+Se rechazan duplicados y el reintento empieza desde cero.
+
+Al iniciar se recuperan transferencias interrumpidas como fallidas, se detectan
+archivos ausentes/corruptos y se reconcilian temporales y archivos huérfanos
+únicamente dentro del directorio privado de descargas. No se siguen enlaces.
+
+Eliminar persiste `pendingDeletion`, oculta la canción y conserva el archivo.
+Deshacer dentro del plazo valida el archivo antes de restaurarlo. Al vencer,
+solo con permiso del coordinador se retira el archivo y después, en transacción,
+el registro y su pertenencia offline. Un fallo de archivo conserva el registro
+para reintentar; al reiniciar se procesan también las eliminaciones vencidas.
+
+## Validación y límites
+
+La suite `flutter test` descubre pruebas de repositorio, HTTP local controlado,
+SQLite con cierre y reapertura reales, fallos de espacio/borrado, reconciliación,
+archivos inválidos, progreso, duplicados y widgets/navegación. Los widgets usan
+un doble de contrato; las pruebas de persistencia usan SQLite y archivos reales.
+
+La aplicación Web compilada con CanvasKit local se revisó visualmente en Chrome,
+430 × 1200: Descargas, seis mocks y navegación inferior visibles sin desbordes.
+Esto valida la demo, no sustituye la aceptación Android ni prueba audio offline.
+No había un dispositivo Android conectado al ejecutar las validaciones.

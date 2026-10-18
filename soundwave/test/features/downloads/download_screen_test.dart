@@ -4,10 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/features/downloads/download_screen.dart';
 import 'package:soundwave/features/downloads/download_store.dart';
 import 'package:soundwave/features/downloads/mock_download_data.dart';
+import 'package:soundwave/core/providers/data_mode_provider.dart';
 
 void main() {
   test('La lista es inmutable y restaurar no duplica canciones', () {
-    final container = ProviderContainer();
+    final container = ProviderContainer(
+      overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
+    );
     addTearDown(container.dispose);
     final store = container.read(downloadStoreProvider.notifier);
     expect(
@@ -24,7 +27,9 @@ void main() {
   testWidgets('Eliminar, deshacer y conservar al desmontar la pantalla', (
     tester,
   ) async {
-    final container = ProviderContainer();
+    final container = ProviderContainer(
+      overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
+    );
     addTearDown(container.dispose);
     Widget app(Widget screen) => UncontrolledProviderScope(
       container: container,
@@ -56,7 +61,9 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
+        );
         addTearDown(container.dispose);
         await tester.pumpWidget(
           UncontrolledProviderScope(

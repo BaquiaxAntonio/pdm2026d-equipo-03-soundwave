@@ -5,12 +5,17 @@ import 'download_cover.dart';
 import 'download_status.dart';
 import 'download_store.dart';
 import 'download_theme.dart';
+import '../../core/providers/data_mode_provider.dart';
+import 'repository_download_view.dart';
 
 class DownloadScreen extends ConsumerWidget {
   const DownloadScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(dataModeProvider) == DataMode.localSqlite) {
+      return const RepositoryDownloadView();
+    }
     final songs = ref.watch(downloadStoreProvider);
     final minutes =
         songs.fold<int>(0, (total, song) => total + song.durationSeconds) ~/ 60;

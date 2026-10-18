@@ -7,34 +7,43 @@ import '../../../core/contracts/audio_file_store.dart';
 import '../../../core/contracts/download_repository.dart';
 import '../../../core/database/download_dao.dart';
 import '../../../core/database/song_dao.dart';
+import '../../../core/database/playlist_dao.dart';
 import '../../../core/errors/repository_exception.dart';
 import '../../../core/models/download_record.dart';
 import '../../../core/models/song.dart';
+import 'download_input.dart';
+import 'local_audio_file_store.dart';
+export 'download_input.dart';
 
-/// API adapters must validate status, audio type and download permission before
-/// exposing the stream. No provider, credentials or temporary URL is hardcoded.
-class DownloadInput {
-  const DownloadInput(this.bytes, {this.totalBytes});
-
-  final Stream<List<int>> bytes;
-  final int? totalBytes;
-}
-
-typedef OpenDownload = Future<DownloadInput> Function(Song song);
-
-/// Initial MVP-06 implementation. The app still uses its existing demo store.
-/// Expired deletion finalization waits for the active-playback policy.
+/// Persistent Android implementation; URL resolution and safe playback release
+/// are injected by their owners. Web keeps the separate demonstration store.
 class SqliteDownloadRepository implements DownloadRepository {
   SqliteDownloadRepository({
     required this.database,
     required this.files,
     required this.openDownload,
+    this.canDelete,
+    DateTime Function()? clock,
   }) : downloads = DownloadDao(database),
-       songs = SongDao(database);
+       songs = SongDao(database),
+       now = clock ?? DateTime.now;
 
   final Database database;
   final AudioFileStore files;
   final OpenDownload openDownload;
+  final Future<bool> Function(String songId)? canDelete;
+  final DateTime Function() now;
+  Future<void> _mutations = Future.value();
+  bool _disposed = false;
+  Future<T> _exclusive<T>(Future<T> Function() action) {
+    final result = _mutations.then((_) => action());
+    _mutations = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
+
   final DownloadDao downloads;
   final SongDao songs;
   final _changes = StreamController<void>.broadcast(sync: true);
@@ -53,7 +62,10 @@ class SqliteDownloadRepository implements DownloadRepository {
       });
     }
 
-    final subscription = _changes.stream.listen((_) => refresh());
+    final subscription = _changes.stream.listen(
+      (_) => refresh(),
+      onDone: listener.close,
+    );
     listener.onCancel = subscription.cancel;
     refresh();
   });
@@ -75,8 +87,25 @@ class SqliteDownloadRepository implements DownloadRepository {
       ));
 
   Future<void> _save(DownloadRecord record) async {
-    await downloads.upsert(record);
-    _changes.add(null);
+    await database.transaction((tx) async {
+      await DownloadDao(tx).upsert(record);
+      if (record.state == DownloadState.completed) {
+        final playlists = PlaylistDao(tx);
+        await playlists.ensureOfflineCollection();
+        if (!(await playlists.songIds('offline')).contains(record.songId)) {
+          final rows = await tx.rawQuery(
+            "SELECT MAX(position) AS last FROM playlist_songs WHERE playlist_id = ?",
+            ['offline'],
+          );
+          await playlists.addSong(
+            playlistId: 'offline',
+            songId: record.songId,
+            position: ((rows.single['last'] as int?) ?? -1) + 1,
+          );
+        }
+      }
+    });
+    if (!_disposed) _changes.add(null);
   }
 
   @override
@@ -84,13 +113,13 @@ class SqliteDownloadRepository implements DownloadRepository {
     if (!_busy.add(song.id)) throw _conflict();
     try {
       await songs.upsert(song);
-      final now = DateTime.now();
+      final timestamp = now();
       final record = DownloadRecord(
         songId: song.id,
         state: DownloadState.queued,
         bytesReceived: 0,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       );
       await database.transaction((tx) async {
         if (await DownloadDao(tx).findBySongId(song.id) != null) {
@@ -136,11 +165,12 @@ class SqliteDownloadRepository implements DownloadRepository {
           localPath: path,
           errorMessage: error,
           createdAt: previous.createdAt,
-          updatedAt: DateTime.now(),
+          updatedAt: now(),
         );
     await _save(record(DownloadState.downloading));
+    DownloadInput? input;
     try {
-      final input = await openDownload(song);
+      input = await openDownload(song);
       if (input.totalBytes != null && input.totalBytes! < 0) {
         throw const RepositoryException(
           RepositoryErrorCode.invalidData,
@@ -171,6 +201,8 @@ class SqliteDownloadRepository implements DownloadRepository {
     } catch (error) {
       await _save(record(DownloadState.failed, error: error.toString()));
       rethrow;
+    } finally {
+      input?.close?.call();
     }
   }
 
@@ -199,47 +231,86 @@ class SqliteDownloadRepository implements DownloadRepository {
         );
       }
     }
-  }
-
-  @override
-  Future<void> requestRemoval(
-    String songId, {
-    required DateTime undoUntil,
-  }) async {
-    if (_busy.contains(songId)) throw _conflict();
-    final record = await _required(songId);
-    if (record.state != DownloadState.completed ||
-        !undoUntil.isAfter(DateTime.now())) {
-      throw _conflict();
+    await finalizeExpiredRemovals();
+    final store = files;
+    if (store is LocalAudioFileStore) {
+      await store.reconcile({
+        for (final record in await downloads.all())
+          if (record.localPath != null) record.localPath!,
+      });
     }
-    await _save(
-      DownloadRecord.fromMap({
-        ...record.toMap(),
-        'state': DownloadState.pendingDeletion.name,
-        'deletion_deadline': undoUntil.millisecondsSinceEpoch,
-        'updated_at': DateTime.now().millisecondsSinceEpoch,
-      }),
-    );
   }
 
+  /// Re-read under the same operation queue as Undo; file deletion comes first,
+  /// so a storage failure retains the record for a later retry.
+  Future<void> finalizeExpiredRemovals() => _exclusive(() async {
+    for (final record in await downloads.all()) {
+      if (record.state != DownloadState.pendingDeletion ||
+          record.deletionDeadline == null ||
+          record.deletionDeadline!.isAfter(now()) ||
+          _busy.contains(record.songId)) {
+        continue;
+      }
+      // Without a playback coordinator we retain the file, safely reversible.
+      if (canDelete == null || !await canDelete!(record.songId)) continue;
+      if (record.localPath != null) await files.delete(record.localPath!);
+      await database.transaction((tx) async {
+        await tx.delete(
+          'playlist_songs',
+          where: 'playlist_id = ? AND song_id = ?',
+          whereArgs: ['offline', record.songId],
+        );
+        await DownloadDao(tx).delete(record.songId);
+      });
+      if (!_disposed) _changes.add(null);
+    }
+  });
+
   @override
-  Future<void> undoRemoval(String songId) async {
+  Future<void> requestRemoval(String songId, {required DateTime undoUntil}) =>
+      _exclusive(() async {
+        if (_busy.contains(songId)) throw _conflict();
+        final record = await _required(songId);
+        if ((record.state != DownloadState.completed &&
+                record.state != DownloadState.failed) ||
+            !undoUntil.isAfter(now())) {
+          throw _conflict();
+        }
+        await _save(
+          DownloadRecord.fromMap({
+            ...record.toMap(),
+            'state': DownloadState.pendingDeletion.name,
+            'deletion_deadline': undoUntil.millisecondsSinceEpoch,
+            'updated_at': DateTime.now().millisecondsSinceEpoch,
+          }),
+        );
+      });
+
+  @override
+  Future<void> undoRemoval(String songId) => _exclusive(() async {
     final record = await _required(songId);
     if (record.state != DownloadState.pendingDeletion ||
         record.deletionDeadline == null ||
-        !record.deletionDeadline!.isAfter(DateTime.now())) {
+        !record.deletionDeadline!.isAfter(now())) {
       throw _conflict();
     }
     await _save(
       DownloadRecord.fromMap({
         ...record.toMap(),
-        'state': DownloadState.completed.name,
+        'state':
+            record.localPath != null && await files.exists(record.localPath!)
+            ? DownloadState.completed.name
+            : DownloadState.failed.name,
         'deletion_deadline': null,
         'updated_at': DateTime.now().millisecondsSinceEpoch,
       }),
     );
-  }
+  });
 
   /// The shared provider owns the database. Await active calls before disposal.
-  Future<void> dispose() => _changes.close();
+  Future<void> dispose() async {
+    await _mutations;
+    _disposed = true;
+    await _changes.close();
+  }
 }

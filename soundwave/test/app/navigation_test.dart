@@ -5,12 +5,18 @@ import 'package:soundwave/features/downloads/download_screen.dart';
 import 'package:soundwave/features/downloads/downloads_screen.dart';
 import 'package:soundwave/features/home/home_screen.dart';
 import 'package:soundwave/main.dart';
+import 'package:soundwave/core/providers/data_mode_provider.dart';
 
 void main() {
   testWidgets(
     'seleccionar Descargas activa DownloadScreen y retira el placeholder',
     (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MyApp()));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
+          child: const MyApp(),
+        ),
+      );
 
       final shell = find.byType(MainShell);
       expect(

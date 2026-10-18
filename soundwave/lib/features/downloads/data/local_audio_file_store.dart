@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../core/contracts/audio_file_store.dart';
 import '../../../core/errors/repository_exception.dart';
+import 'audio_validation.dart';
 
 /// The caller supplies a private app directory; no platform plugin in widgets.
 class LocalAudioFileStore implements AudioFileStore {
@@ -48,7 +49,7 @@ class LocalAudioFileStore implements AudioFileStore {
       );
     }
     final file = File(source);
-    if (!await file.exists() || await file.length() == 0) {
+    if (!await isValidAudioFile(file)) {
       throw const RepositoryException(
         RepositoryErrorCode.invalidData,
         'Audio file is missing or empty.',
@@ -65,7 +66,27 @@ class LocalAudioFileStore implements AudioFileStore {
 
   @override
   Future<bool> exists(String relativePath) =>
-      File(resolve(relativePath)).exists();
+      isValidAudioFile(File(resolve(relativePath)));
+
+  /// Only app-owned transfer files are collected. No directory or link removal.
+  Future<void> reconcile(Set<String> retained) async {
+    for (final area in ['.part', 'audio']) {
+      final directory = Directory(resolve(area));
+      if (!await directory.exists()) continue;
+      await for (final entity in directory.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        if (entity is File) {
+          final relative = p.relative(entity.path, from: root.path);
+          if (!retained.contains(relative) &&
+              !retained.contains(relative.replaceAll('\\', '/'))) {
+            await delete(relative);
+          }
+        }
+      }
+    }
+  }
 
   @override
   Future<void> delete(String relativePath) async {
