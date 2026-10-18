@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Pruebas dentro del módulo por su límite de propiedad; nunca importar en la app.
-// ignore: depend_on_referenced_packages
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/features/downloads/download_screen.dart';
 import 'package:soundwave/features/downloads/download_store.dart';
