@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
-import '../data/mock_songs.dart';
+import '../../../core/models/song.dart';
 import 'song_card.dart';
 
 class SongListSection extends StatelessWidget {
