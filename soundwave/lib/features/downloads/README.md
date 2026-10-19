@@ -86,16 +86,20 @@ los ejemplos nuevamente. No crear un ProviderScope nuevo por pantalla.
 - `download_store.dart`: estado Riverpod, eliminar, restaurar y reiniciar demo.
 - `download_theme.dart`: tema oscuro local compatible con la propuesta UX.
 - `download_cover.dart`: portadas geométricas dibujadas con widgets.
-- `test/download_screen_test.dart`: estado inmutable, deshacer, persistencia al
+- `../../../test/features/downloads/download_screen_test.dart`: estado inmutable, deshacer, persistencia al
   desmontar/remontar y layout a 320/360/430 px con texto al 100 % y 200 %.
 
-Las pruebas permanecen dentro de este módulo para respetar el alcance acordado;
-no se importan desde código de la aplicación. Ejecutarlas explícitamente:
+Las ocho pruebas están en `test/features/downloads/`, conforme a MVP-10 del
+plan MVP. La suite habitual y el CI raíz las descubren con `flutter test`,
+sin ejecutar comandos adicionales ni modificar el workflow. Desde `soundwave/`:
 
 ```sh
-flutter test lib/features/downloads/test/download_screen_test.dart
+flutter test
+# Para ejecutar únicamente las pruebas de descargas:
+flutter test test/features/downloads/download_screen_test.dart
 ```
 
-Validación: `dart format lib/features/downloads` y `flutter analyze`.
+Validación de formato: `dart format --output=none --set-exit-if-changed lib test`.
+Análisis: `flutter analyze`.
 En este entorno flutter analyze terminó por un FormatException del servidor
 LSP; se utilizó también dart analyze como alternativa.
