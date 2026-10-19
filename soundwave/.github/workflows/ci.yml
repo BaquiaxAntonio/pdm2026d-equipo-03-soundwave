@@ -1,0 +1,75 @@
+# Cada Pull Request y cada cambio integrado a main se verifican en una
+# máquina limpia. Esto evita depender de la configuración local de cada equipo.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Una nueva ejecución del mismo PR reemplaza la anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    name: Formato, análisis y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+          cache: true
+
+      - name: Dependencias
+        run: flutter pub get
+
+      - name: Formato
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Análisis estático
+        run: flutter analyze
+
+      # Las pruebas de persistencia usan sqflite_common_ffi en Linux.
+      - name: SQLite para las pruebas
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - name: Pruebas
+        run: flutter test --reporter expanded
+
+  apk:
+    name: APK de prueba
+    needs: calidad
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Compilar APK de depuración
+        run: flutter build apk --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soundwave-apk-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
