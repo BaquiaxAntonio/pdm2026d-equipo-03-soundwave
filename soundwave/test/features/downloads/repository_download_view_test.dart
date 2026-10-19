@@ -34,6 +34,10 @@ class WidgetRepository implements DownloadRepository {
       deletionDeadline: deadline,
     ),
   ];
+
+  @override
+  Future<List<DownloadRecord>> loadDownloads() async => snapshot();
+
   @override
   Stream<List<DownloadRecord>> watchDownloads() => Stream.multi((listener) {
     final subscription = changes.stream.listen(
