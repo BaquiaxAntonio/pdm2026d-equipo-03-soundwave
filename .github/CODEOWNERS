@@ -1,0 +1,9 @@
+# Quién revisa qué. Con "Require review from Code Owners" en el ruleset de
+# main, GitHub solicita automáticamente la revisión de estas personas.
+# Formato: <ruta> <@usuario o @organización/equipo>
+
+*                                   @BaquiaxAntonio @Ortizcarmen @douglas-yasser @ramosdeleon555 @JavEstrada09
+/soundwave/lib/core/                @BaquiaxAntonio @Ortizcarmen @douglas-yasser @ramosdeleon555 @JavEstrada09
+/soundwave/lib/features/downloads/  @BaquiaxAntonio @Ortizcarmen @douglas-yasser @ramosdeleon555 @JavEstrada09
+/.github/                           @BaquiaxAntonio @Ortizcarmen @douglas-yasser @ramosdeleon555 @JavEstrada09
+/docs/                              @BaquiaxAntonio @Ortizcarmen @douglas-yasser @ramosdeleon555 @JavEstrada09
