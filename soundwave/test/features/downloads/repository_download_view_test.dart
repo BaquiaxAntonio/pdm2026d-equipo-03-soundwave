@@ -19,6 +19,10 @@ const song = Song(
 );
 
 class WidgetRepository implements DownloadRepository {
+  bool failLoad = false;
+  bool empty = false;
+  int loadAttempts = 0;
+  Completer<void>? loadGate;
   DownloadState state = DownloadState.completed;
   final changes = StreamController<List<DownloadRecord>>.broadcast(sync: true);
   DateTime? deadline;
@@ -36,7 +40,12 @@ class WidgetRepository implements DownloadRepository {
   ];
 
   @override
-  Future<List<DownloadRecord>> loadDownloads() async => snapshot();
+  Future<List<DownloadRecord>> loadDownloads() async {
+    loadAttempts++;
+    if (loadGate != null) await loadGate!.future;
+    if (failLoad) throw StateError('storage');
+    return empty ? [] : snapshot();
+  }
 
   @override
   Stream<List<DownloadRecord>> watchDownloads() => Stream.multi((listener) {
@@ -135,22 +144,64 @@ void main() {
   testWidgets('repository screen reports loading failure with retry', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          dataModeProvider.overrideWithValue(DataMode.localSqlite),
-          downloadEntriesProvider.overrideWith(
-            (ref) => Stream.error(StateError('storage')),
-          ),
-        ],
-        child: const MaterialApp(home: DownloadScreen()),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-    expect(find.text('No se pudieron cargar tus descargas.'), findsOneWidget);
+    repository.failLoad = true;
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.text('No pudimos cargar tus descargas'), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    expect(repository.loadAttempts, 1);
+    repository.failLoad = false;
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+    expect(repository.loadAttempts, 2);
+    expect(find.text('Audio persistido'), findsOneWidget);
+    expect(find.text('No pudimos cargar tus descargas'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  });
+
+  testWidgets('slow repository displays loading until its Future completes', (
+    tester,
+  ) async {
+    repository.loadGate = Completer<void>();
+    await tester.pumpWidget(app());
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Audio persistido'), findsNothing);
+    repository.loadGate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Audio persistido'), findsOneWidget);
+  });
+
+  testWidgets('empty repository offers working music exploration', (
+    tester,
+  ) async {
+    repository.empty = true;
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Aún no tienes canciones descargadas'),
+      findsOneWidget,
+    );
+    expect(find.text('Audio persistido'), findsNothing);
+    await tester.tap(find.text('Explorar música'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Explorar música'), findsOneWidget);
+  });
+
+  testWidgets('repository data displays title artist and download status', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.text('Audio persistido'), findsOneWidget);
+    expect(find.text('Fixture'), findsOneWidget);
+    expect(find.text('Descargada'), findsOneWidget);
+    expect(find.byTooltip('Eliminar Audio persistido'), findsOneWidget);
   });
 }

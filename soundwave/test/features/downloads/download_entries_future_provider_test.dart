@@ -48,17 +48,20 @@ void main() {
     expect(entries.single.song, _song);
   });
 
-  test('keeps a repository failure as an error without an automatic retry', () async {
-    final repository = _FailingDownloadRepository();
-    final container = containerFor(repository);
-    addTearDown(container.dispose);
-    addTearDown(repository.dispose);
+  test(
+    'keeps a repository failure as an error without an automatic retry',
+    () async {
+      final repository = _FailingDownloadRepository();
+      final container = containerFor(repository);
+      addTearDown(container.dispose);
+      addTearDown(repository.dispose);
 
-    await expectLater(
-      container.read(downloadEntriesFutureProvider.future),
-      throwsStateError,
-    );
+      await expectLater(
+        container.read(downloadEntriesFutureProvider.future),
+        throwsStateError,
+      );
 
-    expect(repository.loadAttempts, 1);
-  });
+      expect(repository.loadAttempts, 1);
+    },
+  );
 }
