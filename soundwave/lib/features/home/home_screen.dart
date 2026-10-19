@@ -25,10 +25,13 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: AppSpacing.s16),
                   SongListSection(title: 'Recientes', songs: recentSongs),
                   const SizedBox(height: AppSpacing.s32),
-                  SongListSection(title: 'Favoritos', songs: favoriteSongs),
+                  SongListSection(
+                    title: 'Favoritos de ejemplo',
+                    songs: favoriteSongs,
+                  ),
                   const SizedBox(height: AppSpacing.s32),
                   SongListSection(
-                    title: 'Recomendados',
+                    title: 'Recomendados de ejemplo',
                     songs: recommendedSongs,
                   ),
                   const SizedBox(height: AppSpacing.s24),
