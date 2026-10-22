@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/models/song.dart';
 import 'cover_placeholder_local.dart';
-import 'search_song_local.dart';
 import 'search_theme_local.dart';
 
 // Fila limpia sin tarjeta: portada + centro flexible + duración.
@@ -9,7 +9,7 @@ import 'search_theme_local.dart';
 // o texto ampliado (Expanded + ellipsis). Sin onTap ni efecto ripple
 // porque la fila no reproduce ni navega todavía.
 class SongRowLocal extends StatelessWidget {
-  final SearchSongLocal song;
+  final Song song;
 
   const SongRowLocal({super.key, required this.song});
 

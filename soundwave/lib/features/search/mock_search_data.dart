@@ -1,36 +1,46 @@
-import 'search_song_local.dart';
+import '../../core/models/song.dart';
 
 // Mocks locales para sugerencias y búsqueda inmediata, sin red.
 // Motivo: permite validar la pantalla sin depender de otros features.
-const List<SearchSongLocal> mockSearchSongs = [
-  SearchSongLocal(
-    id: 's1',
+const List<Song> mockSearchSongs = [
+  Song(
+    id: 'demo:s1',
     title: 'Estudio tranquilo',
     artist: 'SoundWave Mock',
-    durationSeconds: 180,
+    durationMs: 180000,
+    provider: 'demo',
+    sourceId: 's1',
   ),
-  SearchSongLocal(
-    id: 's2',
+  Song(
+    id: 'demo:s2',
     title: 'Viaje en bus bajo la lluvia de ideas interminables',
     artist: 'Sonidos del Campus',
-    durationSeconds: 210,
+    durationMs: 210000,
+    provider: 'demo',
+    sourceId: 's2',
   ),
-  SearchSongLocal(
-    id: 's3',
+  Song(
+    id: 'demo:s3',
     title: 'Tareas focus',
     artist: 'SoundWave Mock',
-    durationSeconds: 150,
+    durationMs: 150000,
+    provider: 'demo',
+    sourceId: 's3',
   ),
-  SearchSongLocal(
-    id: 's4',
+  Song(
+    id: 'demo:s4',
     title: 'Noche de código',
     artist: 'Los Compiladores',
-    durationSeconds: 244,
+    durationMs: 244000,
+    provider: 'demo',
+    sourceId: 's4',
   ),
-  SearchSongLocal(
-    id: 's5',
+  Song(
+    id: 'demo:s5',
     title: 'Café y apuntes',
     artist: 'Sonidos del Campus',
-    durationSeconds: 197,
+    durationMs: 197000,
+    provider: 'demo',
+    sourceId: 's5',
   ),
 ];
