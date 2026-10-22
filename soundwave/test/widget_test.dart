@@ -2,12 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soundwave/main.dart';
+import 'package:soundwave/core/providers/data_mode_provider.dart';
 
 void main() {
   testWidgets('Home screen shows navigation buttons', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
+        child: const MyApp(),
+      ),
+    );
 
     expect(find.text('SoundWave'), findsOneWidget);
     expect(find.text('Buscar'), findsOneWidget);
@@ -20,6 +26,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
         child: MediaQuery(
           data: const MediaQueryData(
             textScaler: TextScaler.linear(1.5),

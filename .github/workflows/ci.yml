@@ -1,35 +1,75 @@
 name: CI
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
-  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
     working-directory: soundwave
 
 jobs:
-  quality:
-    name: quality
+  calidad:
+    name: Formato, análisis y pruebas
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.44.8"
           channel: stable
+          flutter-version: 3.44.8
           cache: true
 
-      - name: Obtener dependencias
+      - name: Dependencias
         run: flutter pub get
 
-      - name: Verificar formato
-        run: dart format --output=none --set-exit-if-changed .
+      - name: Formato
+        run: dart format --output=none --set-exit-if-changed lib test
 
-      - name: Analizar
+      - name: Análisis estático
         run: flutter analyze
 
-      - name: Tests
-        run: flutter test
+      - name: SQLite para las pruebas
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - name: Pruebas
+        run: flutter test --reporter expanded
+
+  apk:
+    name: APK de prueba
+    needs: calidad
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Compilar APK de depuración
+        run: flutter build apk --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soundwave-apk-${{ github.sha }}
+          path: soundwave/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
