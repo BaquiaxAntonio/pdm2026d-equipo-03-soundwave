@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_theme.dart';
 import '../../core/models/song.dart';
@@ -70,11 +70,7 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.error,
-            ),
+            Icon(Icons.error_outline, size: 64, color: AppColors.error),
             const SizedBox(height: AppSpacing.s16),
             Text(
               'No pudimos cargar los datos.',
@@ -115,11 +111,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.music_off,
-              size: 64,
-              color: AppColors.textSecondary,
-            ),
+            Icon(Icons.music_off, size: 64, color: AppColors.textSecondary),
             const SizedBox(height: AppSpacing.s16),
             Text(
               'AÃºn no hay datos.',
@@ -175,10 +167,7 @@ class _HomeContent extends StatelessWidget {
               const SizedBox(height: AppSpacing.s16),
               SongListSection(title: 'Recientes', songs: recent),
               const SizedBox(height: AppSpacing.s32),
-              SongListSection(
-                title: 'Favoritos de ejemplo',
-                songs: favorites,
-              ),
+              SongListSection(title: 'Favoritos de ejemplo', songs: favorites),
               const SizedBox(height: AppSpacing.s32),
               SongListSection(
                 title: 'Recomendados de ejemplo',

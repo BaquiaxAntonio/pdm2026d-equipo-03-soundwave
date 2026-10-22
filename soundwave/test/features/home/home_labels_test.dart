@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/core/models/song.dart';
@@ -38,9 +38,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          homeSongsProvider.overrideWith((ref) async => testSongs),
-        ],
+        overrides: [homeSongsProvider.overrideWith((ref) async => testSongs)],
         child: const MaterialApp(home: HomeScreen()),
       ),
     );

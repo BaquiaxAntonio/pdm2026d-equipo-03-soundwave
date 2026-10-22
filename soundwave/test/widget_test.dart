@@ -1,4 +1,4 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soundwave/core/models/song.dart';
@@ -37,7 +37,7 @@ void main() {
   testWidgets('Home screen shows navigation buttons', (
     WidgetTester tester,
   ) async {
-await tester.pumpWidget(
+    await tester.pumpWidget(
       ProviderScope(
         overrides: [
           dataModeProvider.overrideWithValue(DataMode.demo),
@@ -56,7 +56,7 @@ await tester.pumpWidget(
   testWidgets('Home screen handles large text scale without overflow', (
     WidgetTester tester,
   ) async {
-await tester.pumpWidget(
+    await tester.pumpWidget(
       ProviderScope(
         overrides: [
           dataModeProvider.overrideWithValue(DataMode.demo),

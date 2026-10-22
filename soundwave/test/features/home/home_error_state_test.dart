@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/core/models/song.dart';
@@ -36,31 +36,34 @@ void main() {
     expect(find.text('Reintentar'), findsOneWidget);
   });
 
-  testWidgets('HomeScreen muestra estado de datos cuando provider tiene Ã©xito', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          homeSongsProvider.overrideWith((ref) async => [
-            Song(
-              id: 'demo:test-song',
-              title: 'Test Song',
-              artist: 'Test Artist',
-              durationMs: 180000,
-              provider: 'demo',
-              sourceId: 'test-song',
+  testWidgets(
+    'HomeScreen muestra estado de datos cuando provider tiene Ã©xito',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            homeSongsProvider.overrideWith(
+              (ref) async => [
+                Song(
+                  id: 'demo:test-song',
+                  title: 'Test Song',
+                  artist: 'Test Artist',
+                  durationMs: 180000,
+                  provider: 'demo',
+                  sourceId: 'test-song',
+                ),
+              ],
             ),
-          ]),
-        ],
-        child: const MaterialApp(home: HomeScreen()),
-      ),
-    );
+          ],
+          child: const MaterialApp(home: HomeScreen()),
+        ),
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    // Verificar estado de datos
-    expect(find.text('Test Song'), findsOneWidget);
-    expect(find.text('Test Artist'), findsOneWidget);
-  });
+      // Verificar estado de datos
+      expect(find.text('Test Song'), findsOneWidget);
+      expect(find.text('Test Artist'), findsOneWidget);
+    },
+  );
 }

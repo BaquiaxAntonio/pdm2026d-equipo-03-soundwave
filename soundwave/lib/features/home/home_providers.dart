@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soundwave/core/models/song.dart';
 import 'data/mock_songs.dart' hide Song;
 
@@ -10,30 +10,36 @@ final homeSongsProvider = FutureProvider<List<Song>>((ref) async {
 
   // Combinar todas las canciones mock
   final allSongs = <Song>[
-    ...recentSongs.map((s) => Song(
-          id: 'mock:${s.title.replaceAll(' ', '-').toLowerCase()}',
-          title: s.title,
-          artist: s.artist,
-          provider: 'mock',
-          sourceId: s.title.toLowerCase().replaceAll(' ', '-'),
-          durationMs: _parseDuration(s.duration),
-        )),
-    ...favoriteSongs.map((s) => Song(
-          id: 'mock:${s.title.replaceAll(' ', '-').toLowerCase()}',
-          title: s.title,
-          artist: s.artist,
-          provider: 'mock',
-          sourceId: s.title.toLowerCase().replaceAll(' ', '-'),
-          durationMs: _parseDuration(s.duration),
-        )),
-    ...recommendedSongs.map((s) => Song(
-          id: 'mock:${s.title.replaceAll(' ', '-').toLowerCase()}',
-          title: s.title,
-          artist: s.artist,
-          provider: 'mock',
-          sourceId: s.title.toLowerCase().replaceAll(' ', '-'),
-          durationMs: _parseDuration(s.duration),
-        )),
+    ...recentSongs.map(
+      (s) => Song(
+        id: 'mock:${s.title.replaceAll(' ', '-').toLowerCase()}',
+        title: s.title,
+        artist: s.artist,
+        provider: 'mock',
+        sourceId: s.title.toLowerCase().replaceAll(' ', '-'),
+        durationMs: _parseDuration(s.duration),
+      ),
+    ),
+    ...favoriteSongs.map(
+      (s) => Song(
+        id: 'mock:${s.title.replaceAll(' ', '-').toLowerCase()}',
+        title: s.title,
+        artist: s.artist,
+        provider: 'mock',
+        sourceId: s.title.toLowerCase().replaceAll(' ', '-'),
+        durationMs: _parseDuration(s.duration),
+      ),
+    ),
+    ...recommendedSongs.map(
+      (s) => Song(
+        id: 'mock:${s.title.replaceAll(' ', '-').toLowerCase()}',
+        title: s.title,
+        artist: s.artist,
+        provider: 'mock',
+        sourceId: s.title.toLowerCase().replaceAll(' ', '-'),
+        durationMs: _parseDuration(s.duration),
+      ),
+    ),
   ];
 
   return allSongs;
