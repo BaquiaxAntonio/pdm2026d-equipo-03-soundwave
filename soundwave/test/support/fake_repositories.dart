@@ -53,6 +53,9 @@ class FakeDownloadRepository implements DownloadRepository {
   void _emit() => _changes.add(records);
 
   @override
+  Future<List<DownloadRecord>> loadDownloads() async => records;
+
+  @override
   Stream<List<DownloadRecord>> watchDownloads() async* {
     yield records;
     yield* _changes.stream;

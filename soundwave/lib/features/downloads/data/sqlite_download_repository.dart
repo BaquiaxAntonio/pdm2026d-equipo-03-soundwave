@@ -50,6 +50,9 @@ class SqliteDownloadRepository implements DownloadRepository {
   final _busy = <String>{};
 
   @override
+  Future<List<DownloadRecord>> loadDownloads() => downloads.all();
+
+  @override
   Stream<List<DownloadRecord>> watchDownloads() => Stream.multi((listener) {
     var pending = Future<void>.value();
     void refresh() {

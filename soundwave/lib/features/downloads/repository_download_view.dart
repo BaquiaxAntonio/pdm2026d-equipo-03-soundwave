@@ -4,6 +4,7 @@ import '../../core/models/download_record.dart';
 import 'download_cover.dart';
 import 'download_providers.dart';
 import 'download_theme.dart';
+import '../search/search_screen.dart';
 
 class RepositoryDownloadView extends ConsumerWidget {
   const RepositoryDownloadView({super.key});
@@ -26,7 +27,14 @@ class RepositoryDownloadView extends ConsumerWidget {
       }
     }
 
-    final entries = ref.watch(downloadEntriesProvider);
+    // Refresh the snapshot when the existing live repository reports changes.
+    // Ignore its first emission: the Future owns initial loading and errors.
+    ref.listen(downloadEntriesProvider, (previous, next) {
+      if (previous?.hasValue == true && next.hasValue && !next.isLoading) {
+        ref.invalidate(downloadEntriesFutureProvider);
+      }
+    });
+    final entries = ref.watch(downloadEntriesFutureProvider);
     return Theme(
       data: DownloadTheme.data,
       child: Scaffold(
@@ -40,11 +48,16 @@ class RepositoryDownloadView extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('No se pudieron cargar tus descargas.'),
+                      const Text('No pudimos cargar tus descargas'),
                       FilledButton(
                         onPressed: () {
-                          ref.invalidate(downloadSessionProvider);
-                          ref.invalidate(downloadEntriesProvider);
+                          if (ref.read(downloadSessionProvider).hasError) {
+                            ref.invalidate(downloadSessionProvider);
+                          }
+                          ref.invalidate(downloadEntriesFutureProvider);
+                          if (ref.read(downloadEntriesProvider).hasError) {
+                            ref.invalidate(downloadEntriesProvider);
+                          }
                         },
                         child: const Text('Reintentar'),
                       ),
@@ -105,11 +118,28 @@ class RepositoryDownloadView extends ConsumerWidget {
                       ),
                       const SizedBox(height: 24),
                       if (visible.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Text(
-                            'Tu próxima colección empieza aquí.\nLas canciones que descargues aparecerán en esta lista.',
-                            textAlign: TextAlign.center,
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Aún no tienes canciones descargadas.\nLas canciones que descargues aparecerán en esta lista.',
+                                textAlign: TextAlign.center,
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => Scaffold(
+                                      appBar: AppBar(
+                                        title: const Text('Explorar música'),
+                                      ),
+                                      body: const SearchScreen(),
+                                    ),
+                                  ),
+                                ),
+                                child: const Text('Explorar música'),
+                              ),
+                            ],
                           ),
                         ),
                       for (final entry in visible)
