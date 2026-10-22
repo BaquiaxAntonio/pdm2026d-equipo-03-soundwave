@@ -1,9 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soundwave/core/models/song.dart';
 import 'data/mock_songs.dart' hide Song;
 
-/// Provider que simula un repositorio asíncrono para la pantalla Home.
-/// En producción real, esto consultaría la API o base de datos local.
+/// Provider que simula un repositorio asÃ­ncrono para la pantalla Home.
+/// En producciÃ³n real, esto consultarÃ­a la API o base de datos local.
 final homeSongsProvider = FutureProvider<List<Song>>((ref) async {
   // Simular latencia de red
   await Future.delayed(const Duration(milliseconds: 800));
@@ -51,5 +51,5 @@ int? _parseDuration(String duration) {
 /// Provider para forzar error en pruebas (se usa con override en tests)
 final homeSongsErrorProvider = FutureProvider<List<Song>>((ref) async {
   await Future.delayed(const Duration(milliseconds: 500));
-  throw Exception('No se pudo cargar el catálogo. Verifica tu conexión.');
+  throw Exception('No se pudo cargar el catÃ¡logo. Verifica tu conexiÃ³n.');
 });

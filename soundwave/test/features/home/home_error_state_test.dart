@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/core/models/song.dart';
@@ -6,7 +6,7 @@ import 'package:soundwave/features/home/home_providers.dart';
 import 'package:soundwave/features/home/home_screen.dart';
 
 void main() {
-  testWidgets('HomeScreen muestra estado de error con botón Reintentar', (
+  testWidgets('HomeScreen muestra estado de error con botÃ³n Reintentar', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -28,15 +28,15 @@ void main() {
     expect(find.textContaining('Error de red simulado'), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
 
-    // Verificar que el botón Reintentar es interactuable
+    // Verificar que el botÃ³n Reintentar es interactuable
     await tester.tap(find.text('Reintentar'));
     await tester.pump();
 
-    // El botón debería responder al toque (no lanza error)
+    // El botÃ³n deberÃ­a responder al toque (no lanza error)
     expect(find.text('Reintentar'), findsOneWidget);
   });
 
-  testWidgets('HomeScreen muestra estado de datos cuando provider tiene éxito', (
+  testWidgets('HomeScreen muestra estado de datos cuando provider tiene Ã©xito', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(

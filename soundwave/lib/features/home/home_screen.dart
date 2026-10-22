@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_theme.dart';
 import '../../core/models/song.dart';
@@ -45,7 +45,7 @@ class _LoadingState extends StatelessWidget {
           const CircularProgressIndicator(),
           const SizedBox(height: AppSpacing.s16),
           Text(
-            'Cargando catálogo...',
+            'Cargando catÃ¡logo...',
             style: AppTextStyles.bodySecondary.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -122,7 +122,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s16),
             Text(
-              'Aún no hay datos.',
+              'AÃºn no hay datos.',
               style: AppTextStyles.sectionTitle.copyWith(
                 color: AppColors.textPrimary,
               ),
@@ -130,7 +130,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s8),
             Text(
-              'No se encontraron canciones en el catálogo.',
+              'No se encontraron canciones en el catÃ¡logo.',
               style: AppTextStyles.bodySecondary.copyWith(
                 color: AppColors.textSecondary,
               ),
