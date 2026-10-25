@@ -199,7 +199,7 @@ class _HomeContent extends StatelessWidget {
                   _ResponsiveSongGrid(
                     songs: recent,
                     crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 0.7,
                   ),
                   const SizedBox(height: AppSpacing.s32),
                   _SectionHeader(
@@ -210,7 +210,7 @@ class _HomeContent extends StatelessWidget {
                   _ResponsiveSongGrid(
                     songs: favorites,
                     crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 0.7,
                   ),
                   const SizedBox(height: AppSpacing.s32),
                   _SectionHeader(
@@ -221,7 +221,7 @@ class _HomeContent extends StatelessWidget {
                   _ResponsiveSongGrid(
                     songs: recommended,
                     crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 0.7,
                   ),
                   if (topArtists.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.s32),
@@ -233,6 +233,7 @@ class _HomeContent extends StatelessWidget {
                     _ArtistGrid(
                       songs: topArtists,
                       crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
+                      childAspectRatio: 0.65,
                     ),
                   ],
                   const SizedBox(height: AppSpacing.s32),
@@ -696,23 +697,31 @@ class _GridSongCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.s8),
-          Text(
-            song.title,
-            style: AppTextStyles.body.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  song.title,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                Text(
+                  song.artist,
+                  style: AppTextStyles.bodySecondary.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: AppSpacing.s4),
-          Text(
-            song.artist,
-            style: AppTextStyles.bodySecondary.copyWith(
-              color: AppColors.textSecondary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -733,10 +742,12 @@ class _GridSongCard extends StatelessWidget {
 class _ArtistGrid extends StatelessWidget {
   final List<Song> songs;
   final int crossAxisCount;
+  final double childAspectRatio;
 
   const _ArtistGrid({
     required this.songs,
     required this.crossAxisCount,
+    required this.childAspectRatio,
   });
 
   @override
@@ -753,7 +764,7 @@ class _ArtistGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        childAspectRatio: 0.9,
+        childAspectRatio: childAspectRatio,
         crossAxisSpacing: AppSpacing.s12,
         mainAxisSpacing: AppSpacing.s12,
       ),
@@ -814,21 +825,31 @@ class _ArtistCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s8),
-          Text(
-            artistName,
-            style: AppTextStyles.body.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: AppSpacing.s4),
-          Text(
-            '$songCount canciones',
-            style: AppTextStyles.bodySecondary.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 12,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  artistName,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                Text(
+                  '$songCount canciones',
+                  style: AppTextStyles.bodySecondary.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ],

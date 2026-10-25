@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/features/downloads/download_screen.dart';
-import 'package:soundwave/features/downloads/downloads_screen.dart';
 import 'package:soundwave/features/home/home_screen.dart';
 import 'package:soundwave/main.dart';
 import 'package:soundwave/core/providers/data_mode_provider.dart';
 
 void main() {
   testWidgets(
-    'seleccionar Descargas activa DownloadScreen y retira el placeholder',
+    'seleccionar Descargas activa DownloadScreen',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -44,7 +43,6 @@ void main() {
         3,
       );
       expect(find.byType(DownloadScreen), findsOneWidget);
-      expect(find.byType(DownloadsScreen, skipOffstage: false), findsNothing);
     },
   );
 }
