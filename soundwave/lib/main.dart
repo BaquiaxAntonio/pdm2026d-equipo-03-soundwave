@@ -41,9 +41,8 @@ class MainShell extends ConsumerWidget {
       body: IndexedStack(index: activeTab.index, children: _screens),
       bottomNavigationBar: NavigationBar(
         selectedIndex: activeTab.index,
-        onDestinationSelected: (index) => ref
-            .read(activeTabProvider.notifier)
-            .select(AppTab.values[index]),
+        onDestinationSelected: (index) =>
+            ref.read(activeTabProvider.notifier).select(AppTab.values[index]),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

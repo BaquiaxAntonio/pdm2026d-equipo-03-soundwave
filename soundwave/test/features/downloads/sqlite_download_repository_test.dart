@@ -399,6 +399,7 @@ void main() {
         canDelete: (_) async => true,
       );
       await managed.enqueue(song);
+      final original = (await managed.findBySongId(song.id))!.toMap();
       final audioPath = (await managed.findBySongId(song.id))!.localPath!;
       await managed.dispose();
       await db.close();
@@ -416,6 +417,40 @@ void main() {
         DownloadState.completed,
       );
       expect(await files.exists(audioPath), isTrue);
+      await managed.requestRemoval(
+        song.id,
+        undoUntil: time.add(const Duration(minutes: 1)),
+      );
+      await managed.dispose();
+      await db.close();
+      db = await open();
+      managed = SqliteDownloadRepository(
+        database: db,
+        files: files,
+        openDownload: source,
+        clock: () => time,
+        canDelete: (_) async => true,
+      );
+      await managed.recoverInterrupted();
+      expect(
+        (await managed.findBySongId(song.id))!.state,
+        DownloadState.pendingDeletion,
+      );
+      await managed.undoRemoval(song.id);
+      await managed.dispose();
+      await db.close();
+      db = await open();
+      managed = SqliteDownloadRepository(
+        database: db,
+        files: files,
+        openDownload: source,
+        clock: () => time,
+        canDelete: (_) async => true,
+      );
+      await managed.recoverInterrupted();
+      expect((await managed.findBySongId(song.id))!.toMap(), original);
+      expect(await managed.downloads.all(), hasLength(1));
+      expect(await File(files.resolve(audioPath)).readAsBytes(), wavFixture());
       await managed.requestRemoval(
         song.id,
         undoUntil: time.add(const Duration(seconds: 1)),

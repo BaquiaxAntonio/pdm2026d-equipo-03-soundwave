@@ -281,7 +281,6 @@ class SqliteDownloadRepository implements DownloadRepository {
             ...record.toMap(),
             'state': DownloadState.pendingDeletion.name,
             'deletion_deadline': undoUntil.millisecondsSinceEpoch,
-            'updated_at': DateTime.now().millisecondsSinceEpoch,
           }),
         );
       });
@@ -302,7 +301,6 @@ class SqliteDownloadRepository implements DownloadRepository {
             ? DownloadState.completed.name
             : DownloadState.failed.name,
         'deletion_deadline': null,
-        'updated_at': DateTime.now().millisecondsSinceEpoch,
       }),
     );
   });

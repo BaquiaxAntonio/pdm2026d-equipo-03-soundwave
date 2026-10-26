@@ -26,6 +26,38 @@ class RepositoryDownloadView extends ConsumerWidget {
       }
     }
 
+    Future<bool> remove(DownloadEntry entry) async {
+      await act(() async {
+        final session = await ref.read(downloadSessionProvider.future);
+        final duration = ref.read(downloadUndoDurationProvider);
+        await session!.repository.requestRemoval(
+          entry.record.songId,
+          undoUntil: DateTime.now().add(duration),
+        );
+        if (!context.mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        // The latest removal gets the SnackBar; earlier ones retain their
+        // per-record Undo button and their own persisted deadline.
+        messenger.removeCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            duration: duration,
+            content: const Text('Descarga eliminada.'),
+            action: SnackBarAction(
+              label: 'Deshacer',
+              onPressed: () => act(
+                () => session.repository.undoRemoval(entry.record.songId),
+              ),
+            ),
+          ),
+        );
+      });
+      // The repository stream removes the row after the database write.
+      // Never leave a dismissed widget waiting for an asynchronous refresh.
+      // On failure the unchanged row slides back into place.
+      return false;
+    }
+
     final filter = ref.watch(downloadFilterProvider);
     final entries = ref.watch(downloadEntriesProvider);
     return Theme(
@@ -136,111 +168,98 @@ class RepositoryDownloadView extends ConsumerWidget {
                           ),
                         ),
                       for (final entry in visible)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Row(
-                            children: [
-                              const DownloadCover(index: 0),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      entry.song?.title ?? entry.record.songId,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
-                                    ),
-                                    if (entry.song != null)
-                                      Text(entry.song!.artist),
-                                    if (entry.record.state ==
-                                        DownloadState.completed)
-                                      const Text(
-                                        'Descargada',
-                                        style: TextStyle(
-                                          color: DownloadTheme.accent,
-                                        ),
-                                      ),
-                                    if (entry.record.state ==
-                                        DownloadState.queued)
-                                      const Text('En cola'),
-                                    if (entry.record.state ==
-                                        DownloadState.downloading) ...[
-                                      LinearProgressIndicator(
-                                        value: entry.record.progress,
-                                      ),
-                                      Text(
-                                        entry.record.progress == null
-                                            ? 'Descargando…'
-                                            : '${(entry.record.progress! * 100).round()} %',
-                                      ),
-                                    ],
-                                    if (entry.record.state ==
-                                        DownloadState.failed) ...[
-                                      const Text(
-                                        'Descarga no disponible. Puedes reintentar.',
-                                      ),
-                                      TextButton(
-                                        onPressed: () => act(() async {
-                                          final session = await ref.read(
-                                            downloadSessionProvider.future,
-                                          );
-                                          await session!.repository.retry(
-                                            entry.record.songId,
-                                          );
-                                        }),
-                                        child: const Text('Reintentar'),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              if ([
+                        Dismissible(
+                          key: ValueKey(entry.record.songId),
+                          direction:
+                              [
                                 DownloadState.completed,
                                 DownloadState.failed,
-                              ].contains(entry.record.state))
-                                IconButton(
-                                  tooltip:
-                                      'Eliminar ${entry.song?.title ?? entry.record.songId}',
-                                  icon: const Icon(
-                                    Icons.delete_outline_rounded,
-                                  ),
-                                  onPressed: () => act(() async {
-                                    final session = await ref.read(
-                                      downloadSessionProvider.future,
-                                    );
-                                    final duration = ref.read(
-                                      downloadUndoDurationProvider,
-                                    );
-                                    await session!.repository.requestRemoval(
-                                      entry.record.songId,
-                                      undoUntil: DateTime.now().add(duration),
-                                    );
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          duration: duration,
-                                          content: const Text(
-                                            'Se ocultó la canción. Puedes deshacer la eliminación.',
-                                          ),
-                                          action: SnackBarAction(
-                                            label: 'Deshacer',
-                                            onPressed: () => act(
-                                              () => session.repository
-                                                  .undoRemoval(
-                                                    entry.record.songId,
-                                                  ),
-                                            ),
+                              ].contains(entry.record.state)
+                              ? DismissDirection.endToStart
+                              : DismissDirection.none,
+                          confirmDismiss: (_) => remove(entry),
+                          background: Container(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.all(16),
+                            child: const Icon(Icons.delete_outline_rounded),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Row(
+                              children: [
+                                const DownloadCover(index: 0),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        entry.song?.title ??
+                                            entry.record.songId,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      if (entry.song != null)
+                                        Text(entry.song!.artist),
+                                      if (entry.record.state ==
+                                          DownloadState.completed)
+                                        const Text(
+                                          'Descargada',
+                                          style: TextStyle(
+                                            color: DownloadTheme.accent,
                                           ),
                                         ),
-                                      );
-                                    }
-                                  }),
+                                      if (entry.record.state ==
+                                          DownloadState.queued)
+                                        const Text('En cola'),
+                                      if (entry.record.state ==
+                                          DownloadState.downloading) ...[
+                                        LinearProgressIndicator(
+                                          value: entry.record.progress,
+                                        ),
+                                        Text(
+                                          entry.record.progress == null
+                                              ? 'Descargando…'
+                                              : '${(entry.record.progress! * 100).round()} %',
+                                        ),
+                                      ],
+                                      if (entry.record.state ==
+                                          DownloadState.failed) ...[
+                                        const Text(
+                                          'Descarga no disponible. Puedes reintentar.',
+                                        ),
+                                        TextButton(
+                                          onPressed: () => act(() async {
+                                            final session = await ref.read(
+                                              downloadSessionProvider.future,
+                                            );
+                                            await session!.repository.retry(
+                                              entry.record.songId,
+                                            );
+                                          }),
+                                          child: const Text('Reintentar'),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
-                            ],
+                                if ([
+                                  DownloadState.completed,
+                                  DownloadState.failed,
+                                ].contains(entry.record.state))
+                                  IconButton(
+                                    tooltip:
+                                        'Eliminar ${entry.song?.title ?? entry.record.songId}',
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                    ),
+                                    onPressed: () => remove(entry),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       for (final entry in pending)
