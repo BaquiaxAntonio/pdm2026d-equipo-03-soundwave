@@ -165,7 +165,11 @@ class _HomeContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.s16),
-              SongListSection(title: 'Recientes', songs: recent),
+              SongListSection(
+                title: 'Recientes',
+                songs: recent,
+                showViewAll: true,
+              ),
               const SizedBox(height: AppSpacing.s32),
               SongListSection(title: 'Favoritos de ejemplo', songs: favorites),
               const SizedBox(height: AppSpacing.s32),

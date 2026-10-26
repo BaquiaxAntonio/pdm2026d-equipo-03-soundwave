@@ -26,6 +26,7 @@ class RepositoryDownloadView extends ConsumerWidget {
       }
     }
 
+    final filter = ref.watch(downloadFilterProvider);
     final entries = ref.watch(downloadEntriesProvider);
     return Theme(
       data: DownloadTheme.data,
@@ -79,6 +80,26 @@ class RepositoryDownloadView extends ConsumerWidget {
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 24),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Todas'),
+                            selected: !filter.completedOnly,
+                            onSelected: (_) => ref
+                                .read(downloadFilterProvider.notifier)
+                                .showAll(),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Completadas'),
+                            selected: filter.completedOnly,
+                            onSelected: (_) => ref
+                                .read(downloadFilterProvider.notifier)
+                                .showCompleted(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -105,10 +126,12 @@ class RepositoryDownloadView extends ConsumerWidget {
                       ),
                       const SizedBox(height: 24),
                       if (visible.isEmpty)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.all(24),
                           child: Text(
-                            'Tu próxima colección empieza aquí.\nLas canciones que descargues aparecerán en esta lista.',
+                            filter.completedOnly
+                                ? 'No hay descargas completadas.'
+                                : 'Tu próxima colección empieza aquí.\nLas canciones que descargues aparecerán en esta lista.',
                             textAlign: TextAlign.center,
                           ),
                         ),

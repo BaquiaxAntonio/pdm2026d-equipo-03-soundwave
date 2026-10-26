@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app_theme.dart';
+import 'app/navigation_provider.dart';
 import 'features/downloads/download_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
@@ -23,15 +24,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerWidget {
   const MainShell({super.key});
-
-  @override
-  State<MainShell> createState() => _MainShellState();
-}
-
-class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
 
   static const List<Widget> _screens = [
     HomeScreen(),
@@ -41,16 +35,15 @@ class _MainShellState extends State<MainShell> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeTab = ref.watch(activeTabProvider);
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(index: activeTab.index, children: _screens),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        selectedIndex: activeTab.index,
+        onDestinationSelected: (index) => ref
+            .read(activeTabProvider.notifier)
+            .select(AppTab.values[index]),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
