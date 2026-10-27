@@ -866,4 +866,5 @@ class _ArtistCard extends StatelessWidget {
       ),
     );
   }
+
 }
