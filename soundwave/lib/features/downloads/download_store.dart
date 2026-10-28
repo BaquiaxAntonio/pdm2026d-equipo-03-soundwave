@@ -12,6 +12,12 @@ class DownloadStore extends Notifier<List<DownloadStatus>> {
   @override
   List<DownloadStatus> build() => List.unmodifiable(mockDownloads);
 
+  bool add(DownloadStatus song) {
+    if (state.any((item) => item.id == song.id)) return false;
+    state = List.unmodifiable([...state, song]);
+    return true;
+  }
+
   void remove(String id) {
     state = List.unmodifiable(state.where((song) => song.id != id));
   }
