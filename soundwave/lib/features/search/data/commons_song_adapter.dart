@@ -1,6 +1,6 @@
 import '../../../core/models/song.dart';
 
-const _commonsProvider = 'wikimedia_commons';
+const commonsProviderId = 'wikimedia_commons';
 
 /// Catalog data observed in Commons, kept separate from download permission.
 ///
@@ -14,6 +14,7 @@ class CommonsCatalogItem {
     this.mediaUrl,
     this.mimeType,
     this.fileSizeBytes,
+    this.sha1,
     this.creditHtml,
     this.creditText,
     this.licenseShortName,
@@ -30,6 +31,7 @@ class CommonsCatalogItem {
   final Uri? mediaUrl;
   final String? mimeType;
   final int? fileSizeBytes;
+  final String? sha1;
   final String? creditHtml;
   final String? creditText;
   final String? licenseShortName;
@@ -92,11 +94,11 @@ CommonsCatalogItem? _parsePage(Object? value) {
 
   return CommonsCatalogItem(
     song: Song(
-      id: '$_commonsProvider:$sourceId',
+      id: '$commonsProviderId:$sourceId',
       title: title,
       artist: artist,
       durationMs: _durationMs(imageInfo['duration']),
-      provider: _commonsProvider,
+      provider: commonsProviderId,
       sourceId: sourceId,
     ),
     sourcePageUrl:
@@ -106,6 +108,7 @@ CommonsCatalogItem? _parsePage(Object? value) {
     mediaUrl: _absoluteUri(imageInfo['url']),
     mimeType: _nonEmptyString(imageInfo['mime']),
     fileSizeBytes: _nonNegativeInt(imageInfo['size']),
+    sha1: _nonEmptyString(imageInfo['sha1']),
     creditHtml: creditHtml,
     creditText: creditText == null || creditText.isEmpty ? null : creditText,
     licenseShortName: _nonEmptyString(
