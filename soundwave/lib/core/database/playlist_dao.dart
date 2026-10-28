@@ -35,4 +35,13 @@ class PlaylistDao {
     );
     return rows.map((row) => row['song_id']! as String).toList(growable: false);
   }
+
+  Future<int> removeSong({
+    required String playlistId,
+    required String songId,
+  }) => database.delete(
+    'playlist_songs',
+    where: 'playlist_id = ? AND song_id = ?',
+    whereArgs: [playlistId, songId],
+  );
 }
