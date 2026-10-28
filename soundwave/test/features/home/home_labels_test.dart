@@ -176,11 +176,7 @@ void main() {
       ProviderScope(
         overrides: [homeSongsProvider.overrideWith((ref) async => testSongs)],
         child: MaterialApp(
-          home: SizedBox(
-            height: 1000,
-            width: 400,
-            child: const HomeScreen(),
-          ),
+          home: SizedBox(height: 1000, width: 400, child: const HomeScreen()),
         ),
       ),
     );

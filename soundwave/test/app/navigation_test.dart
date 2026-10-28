@@ -7,42 +7,39 @@ import 'package:soundwave/main.dart';
 import 'package:soundwave/core/providers/data_mode_provider.dart';
 
 void main() {
-  testWidgets(
-    'seleccionar Descargas activa DownloadScreen',
-    (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
-          child: const MyApp(),
-        ),
-      );
+  testWidgets('seleccionar Descargas activa DownloadScreen', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [dataModeProvider.overrideWithValue(DataMode.demo)],
+        child: const MyApp(),
+      ),
+    );
 
-      final shell = find.byType(MainShell);
-      expect(
-        find.descendant(of: shell, matching: find.byType(HomeScreen)),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<IndexedStack>(
-              find.descendant(of: shell, matching: find.byType(IndexedStack)),
-            )
-            .index,
-        0,
-      );
+    final shell = find.byType(MainShell);
+    expect(
+      find.descendant(of: shell, matching: find.byType(HomeScreen)),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<IndexedStack>(
+            find.descendant(of: shell, matching: find.byType(IndexedStack)),
+          )
+          .index,
+      0,
+    );
 
-      await tester.tap(find.text('Descargas'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Descargas'));
+    await tester.pumpAndSettle();
 
-      expect(
-        tester
-            .widget<IndexedStack>(
-              find.descendant(of: shell, matching: find.byType(IndexedStack)),
-            )
-            .index,
-        3,
-      );
-      expect(find.byType(DownloadScreen), findsOneWidget);
-    },
-  );
+    expect(
+      tester
+          .widget<IndexedStack>(
+            find.descendant(of: shell, matching: find.byType(IndexedStack)),
+          )
+          .index,
+      3,
+    );
+    expect(find.byType(DownloadScreen), findsOneWidget);
+  });
 }

@@ -36,9 +36,7 @@ class HomeScreen extends ConsumerWidget {
       automaticallyImplyLeading: false,
       title: Text(
         'SoundWave',
-        style: AppTextStyles.screenTitle.copyWith(
-          color: AppColors.textPrimary,
-        ),
+        style: AppTextStyles.screenTitle.copyWith(color: AppColors.textPrimary),
       ),
       actions: [
         IconButton(
@@ -191,25 +189,27 @@ class _HomeContent extends StatelessWidget {
               ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _SectionHeader(
-                    title: 'Recientes',
-                    onSeeAll: () {},
-                  ),
+                  _SectionHeader(title: 'Recientes', onSeeAll: () {}),
                   const SizedBox(height: AppSpacing.s12),
                   _ResponsiveSongGrid(
                     songs: recent,
-                    crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
+                    crossAxisCount: isDesktop
+                        ? 4
+                        : isTablet
+                        ? 3
+                        : 2,
                     childAspectRatio: 0.7,
                   ),
                   const SizedBox(height: AppSpacing.s32),
-                  _SectionHeader(
-                    title: 'Favoritos',
-                    onSeeAll: () {},
-                  ),
+                  _SectionHeader(title: 'Favoritos', onSeeAll: () {}),
                   const SizedBox(height: AppSpacing.s12),
                   _ResponsiveSongGrid(
                     songs: favorites,
-                    crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
+                    crossAxisCount: isDesktop
+                        ? 4
+                        : isTablet
+                        ? 3
+                        : 2,
                     childAspectRatio: 0.7,
                   ),
                   const SizedBox(height: AppSpacing.s32),
@@ -220,7 +220,11 @@ class _HomeContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.s12),
                   _ResponsiveSongGrid(
                     songs: recommended,
-                    crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
+                    crossAxisCount: isDesktop
+                        ? 4
+                        : isTablet
+                        ? 3
+                        : 2,
                     childAspectRatio: 0.7,
                   ),
                   if (topArtists.isNotEmpty) ...[
@@ -232,7 +236,11 @@ class _HomeContent extends StatelessWidget {
                     const SizedBox(height: AppSpacing.s12),
                     _ArtistGrid(
                       songs: topArtists,
-                      crossAxisCount: isDesktop ? 4 : isTablet ? 3 : 2,
+                      crossAxisCount: isDesktop
+                          ? 4
+                          : isTablet
+                          ? 3
+                          : 2,
                       childAspectRatio: 0.65,
                     ),
                   ],
@@ -251,10 +259,7 @@ class _HeroSection extends StatelessWidget {
   final Song? recentSong;
   final VoidCallback onPlayRecent;
 
-  const _HeroSection({
-    required this.recentSong,
-    required this.onPlayRecent,
-  });
+  const _HeroSection({required this.recentSong, required this.onPlayRecent});
 
   @override
   Widget build(BuildContext context) {
@@ -308,8 +313,8 @@ class _HeroSection extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.s24),
                   _HeroArtwork(recentSong: recentSong),
-],
-        ),
+                ],
+              ),
       ),
     );
   }
@@ -319,12 +324,9 @@ class _HeroContent extends StatelessWidget {
   final Song? recentSong;
   final VoidCallback onPlayRecent;
 
-  const _HeroContent({
-    required this.recentSong,
-    required this.onPlayRecent,
-  });
+  const _HeroContent({required this.recentSong, required this.onPlayRecent});
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,16 +353,17 @@ class _HeroContent extends StatelessWidget {
     );
   }
 
-  Widget _buildContinueListeningSection(BuildContext context, Song? recentSong) {
+  Widget _buildContinueListeningSection(
+    BuildContext context,
+    Song? recentSong,
+  ) {
     if (recentSong != null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Continuar escuchando',
-            style: AppTextStyles.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.s12),
           _RecentSongCard(song: recentSong, onTap: onPlayRecent),
@@ -384,7 +387,7 @@ class _HeroContent extends StatelessWidget {
 class _HeroArtwork extends StatelessWidget {
   final Song? recentSong;
 
-  _HeroArtwork({required this.recentSong});
+  const _HeroArtwork({required this.recentSong});
 
   @override
   Widget build(BuildContext context) {
@@ -413,7 +416,7 @@ class _HeroArtwork extends StatelessWidget {
                 child: Image.network(
                   recentSong!.artworkUrl!.toString(),
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                  errorBuilder: (_, _, _) => _buildPlaceholder(),
                 ),
               )
             else
@@ -431,48 +434,48 @@ class _HeroArtwork extends StatelessWidget {
                 ),
               ),
             ),
-          Positioned(
-            bottom: AppSpacing.s16,
-            left: AppSpacing.s16,
-            right: AppSpacing.s16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (recentSong != null) ...[
-                  Text(
-                    recentSong!.title,
-                    style: AppTextStyles.sectionTitle.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold,
+            Positioned(
+              bottom: AppSpacing.s16,
+              left: AppSpacing.s16,
+              right: AppSpacing.s16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (recentSong != null) ...[
+                    Text(
+                      recentSong!.title,
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.s4),
-                  Text(
-                    recentSong!.artist,
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textSecondary,
+                    const SizedBox(height: AppSpacing.s4),
+                    Text(
+                      recentSong!.artist,
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ] else ...[
-                  Text(
-                    'Descubre nueva música',
-                    style: AppTextStyles.sectionTitle.copyWith(
-                      color: AppColors.textPrimary,
+                  ] else ...[
+                    Text(
+                      'Descubre nueva música',
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildPlaceholder() {
     return Center(
@@ -517,8 +520,10 @@ class _RecentSongCard extends StatelessWidget {
                       child: Image.network(
                         song.artworkUrl!.toString(),
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.music_note, color: AppColors.accent),
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.music_note,
+                          color: AppColors.accent,
+                        ),
                       ),
                     )
                   : const Icon(Icons.music_note, color: AppColors.accent),
@@ -639,7 +644,7 @@ class _GridSongCard extends StatelessWidget {
   final Song song;
   final VoidCallback onTap;
 
-  _GridSongCard({required this.song, required this.onTap});
+  const _GridSongCard({required this.song, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -664,7 +669,7 @@ class _GridSongCard extends StatelessWidget {
                           child: Image.network(
                             song.artworkUrl!.toString(),
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                            errorBuilder: (_, _, _) => _buildPlaceholder(),
                           ),
                         )
                       : _buildPlaceholder(),
@@ -789,7 +794,7 @@ class _ArtistCard extends StatelessWidget {
   final Uri? artworkUrl;
   final VoidCallback onTap;
 
-  _ArtistCard({
+  const _ArtistCard({
     required this.artistName,
     required this.songCount,
     required this.artworkUrl,
@@ -818,7 +823,7 @@ class _ArtistCard extends StatelessWidget {
                     ? Image.network(
                         artworkUrl!.toString(),
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                        errorBuilder: (_, _, _) => _buildPlaceholder(),
                       )
                     : _buildPlaceholder(),
               ),
@@ -866,5 +871,4 @@ class _ArtistCard extends StatelessWidget {
       ),
     );
   }
-
 }
