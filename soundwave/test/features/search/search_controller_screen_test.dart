@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:soundwave/core/contracts/download_repository.dart';
+import 'package:soundwave/core/models/download_record.dart';
 import 'package:soundwave/core/models/song.dart';
 import 'package:soundwave/core/providers/data_mode_provider.dart';
+import 'package:soundwave/features/downloads/download_providers.dart';
 import 'package:soundwave/features/search/data/commons_api_client.dart';
 import 'package:soundwave/features/search/data/commons_catalog_repository.dart';
 import 'package:soundwave/features/search/data/commons_song_adapter.dart';
@@ -235,6 +238,176 @@ void main() {
     expect(find.text('Noche de código'), findsOneWidget);
     expect(repositoryReads, 0);
   });
+
+  testWidgets('Descargar entrega la canción canónica a enqueue', (
+    tester,
+  ) async {
+    final song = _song('Canción descargable');
+    final downloads = _FakeDownloadRepository();
+    addTearDown(downloads.dispose);
+    await _pumpDownloadScreen(tester, song: song, downloads: downloads);
+
+    await tester.tap(find.byTooltip('Descargar ${song.title}'));
+    await tester.pumpAndSettle();
+
+    expect(downloads.enqueued, hasLength(1));
+    expect(downloads.enqueued.single, same(song));
+  });
+
+  testWidgets('pulsaciones rápidas no duplican enqueue', (tester) async {
+    final song = _song('Una sola solicitud');
+    final pending = Completer<void>();
+    final downloads = _FakeDownloadRepository(enqueuePending: pending);
+    addTearDown(downloads.dispose);
+    await _pumpDownloadScreen(tester, song: song, downloads: downloads);
+    final button = find.byTooltip('Descargar ${song.title}');
+
+    await tester.tap(button);
+    await tester.tap(button);
+    await tester.pump();
+    await tester.pump();
+
+    expect(downloads.enqueued, hasLength(1));
+
+    pending.complete();
+    await tester.pumpAndSettle();
+    expect(downloads.enqueued, hasLength(1));
+  });
+
+  testWidgets('Search refleja los estados existentes de descarga', (
+    tester,
+  ) async {
+    final song = _song('Canción con estado');
+    final downloads = _FakeDownloadRepository();
+    addTearDown(downloads.dispose);
+    downloads.setRecord(_downloadRecord(song.id, DownloadState.queued));
+    await _pumpDownloadScreen(tester, song: song, downloads: downloads);
+
+    expect(find.text('En cola'), findsOneWidget);
+
+    downloads.setRecord(
+      _downloadRecord(
+        song.id,
+        DownloadState.downloading,
+        bytesReceived: 50,
+        totalBytes: 100,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Descargando 50 %'), findsOneWidget);
+
+    downloads.setRecord(_downloadRecord(song.id, DownloadState.completed));
+    await tester.pumpAndSettle();
+    expect(find.text('Descargada'), findsOneWidget);
+
+    downloads.setRecord(
+      _downloadRecord(
+        song.id,
+        DownloadState.failed,
+        errorMessage: 'Fallo controlado',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Fallo controlado'), findsOneWidget);
+    expect(
+      find.byTooltip('Reintentar descarga de ${song.title}'),
+      findsOneWidget,
+    );
+
+    downloads.setRecord(
+      _downloadRecord(song.id, DownloadState.pendingDeletion),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Pendiente de eliminación'), findsOneWidget);
+  });
+
+  testWidgets('error de enqueue se comunica sin simular éxito', (tester) async {
+    final song = _song('Descarga con error');
+    final downloads = _FakeDownloadRepository(
+      enqueueError: StateError('transporte no configurado'),
+    );
+    addTearDown(downloads.dispose);
+    await _pumpDownloadScreen(tester, song: song, downloads: downloads);
+
+    await tester.tap(find.byTooltip('Descargar ${song.title}'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.text('No se pudo solicitar la descarga. Inténtalo de nuevo.'),
+      findsWidgets,
+    );
+    expect(downloads.enqueued, hasLength(1));
+  });
+
+  testWidgets('sesión no disponible se explica y no intenta enqueue', (
+    tester,
+  ) async {
+    final song = _song('Sin sesión');
+    final repository = _ControlledRepository((_) async => _outcome([song]));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dataModeProvider.overrideWithValue(DataMode.localSqlite),
+          searchDebounceDurationProvider.overrideWithValue(Duration.zero),
+          commonsCatalogRepositoryProvider.overrideWith(
+            (ref) async => repository,
+          ),
+          downloadSessionProvider.overrideWith((ref) async => null),
+        ],
+        child: const MaterialApp(home: SearchScreen()),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), song.title);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('La sesión de descargas no está disponible.'),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byTooltip('Información de descarga de ${song.title}'),
+    );
+    await tester.pump();
+    expect(
+      find.text('La sesión de descargas no está disponible.'),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('modo demo explica que la descarga real no está disponible', (
+    tester,
+  ) async {
+    var sessionReads = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dataModeProvider.overrideWithValue(DataMode.demo),
+          downloadSessionProvider.overrideWith((ref) async {
+            sessionReads++;
+            throw StateError('No debe abrir una sesión en modo demo.');
+          }),
+        ],
+        child: const MaterialApp(home: SearchScreen()),
+      ),
+    );
+
+    expect(
+      find.text('La descarga real no está disponible en modo demostración.'),
+      findsWidgets,
+    );
+    await tester.tap(
+      find.byTooltip('Información de descarga de Estudio tranquilo'),
+    );
+    await tester.pump();
+
+    expect(
+      find.text('La descarga real no está disponible en modo demostración.'),
+      findsWidgets,
+    );
+    expect(sessionReads, 0);
+  });
 }
 
 ProviderContainer _container(
@@ -257,10 +430,39 @@ Future<void> _pumpScreen(
       dataModeProvider.overrideWithValue(DataMode.localSqlite),
       searchDebounceDurationProvider.overrideWithValue(Duration.zero),
       commonsCatalogRepositoryProvider.overrideWith((ref) async => repository),
+      downloadSessionProvider.overrideWith((ref) async => null),
     ],
     child: const MaterialApp(home: SearchScreen()),
   ),
 );
+
+Future<void> _pumpDownloadScreen(
+  WidgetTester tester, {
+  required Song song,
+  required _FakeDownloadRepository downloads,
+}) async {
+  final repository = _ControlledRepository((_) async => _outcome([song]));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        dataModeProvider.overrideWithValue(DataMode.localSqlite),
+        searchDebounceDurationProvider.overrideWithValue(Duration.zero),
+        commonsCatalogRepositoryProvider.overrideWith(
+          (ref) async => repository,
+        ),
+        downloadSessionProvider.overrideWith(
+          (ref) async => DownloadSession(
+            downloads,
+            (id) async => id == song.id ? song : null,
+          ),
+        ),
+      ],
+      child: const MaterialApp(home: SearchScreen()),
+    ),
+  );
+  await tester.enterText(find.byType(TextField), song.title);
+  await tester.pumpAndSettle();
+}
 
 Song _song(String title) => Song(
   id: 'wikimedia_commons:$title',
@@ -311,4 +513,79 @@ class _UnusedStore implements CatalogSongStore {
 
   @override
   Future<List<Song>> search(String query) => throw UnimplementedError();
+}
+
+DownloadRecord _downloadRecord(
+  String songId,
+  DownloadState state, {
+  int bytesReceived = 0,
+  int? totalBytes,
+  String? errorMessage,
+}) {
+  final now = DateTime(2026);
+  return DownloadRecord(
+    songId: songId,
+    state: state,
+    bytesReceived: bytesReceived,
+    totalBytes: totalBytes,
+    createdAt: now,
+    updatedAt: now,
+    errorMessage: errorMessage,
+  );
+}
+
+class _FakeDownloadRepository implements DownloadRepository {
+  _FakeDownloadRepository({this.enqueuePending, this.enqueueError});
+
+  final Completer<void>? enqueuePending;
+  final Object? enqueueError;
+  final enqueued = <Song>[];
+  final _records = <String, DownloadRecord>{};
+  final _changes = StreamController<List<DownloadRecord>>.broadcast(sync: true);
+
+  void setRecord(DownloadRecord record) {
+    _records[record.songId] = record;
+    _changes.add(List.unmodifiable(_records.values));
+  }
+
+  @override
+  Stream<List<DownloadRecord>> watchDownloads() async* {
+    yield List.unmodifiable(_records.values);
+    yield* _changes.stream;
+  }
+
+  @override
+  Future<DownloadRecord?> findBySongId(String songId) async => _records[songId];
+
+  @override
+  Future<void> enqueue(Song song) async {
+    enqueued.add(song);
+    final pending = enqueuePending;
+    if (pending != null) await pending.future;
+    final error = enqueueError;
+    if (error != null) throw error;
+    setRecord(_downloadRecord(song.id, DownloadState.queued));
+  }
+
+  @override
+  Future<void> retry(String songId) async {
+    setRecord(_downloadRecord(songId, DownloadState.queued));
+  }
+
+  @override
+  Future<void> requestRemoval(
+    String songId, {
+    required DateTime undoUntil,
+  }) async {
+    setRecord(_downloadRecord(songId, DownloadState.pendingDeletion));
+  }
+
+  @override
+  Future<void> undoRemoval(String songId) async {
+    setRecord(_downloadRecord(songId, DownloadState.completed));
+  }
+
+  void dispose() {
+    _changes.close();
+  }
 }

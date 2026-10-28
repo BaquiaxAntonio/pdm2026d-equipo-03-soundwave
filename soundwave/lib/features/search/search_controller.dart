@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/models/download_record.dart';
 import '../../core/models/song.dart';
 import '../../core/providers/data_mode_provider.dart';
+import '../downloads/download_providers.dart';
 import 'data/commons_api_client.dart';
 import 'data/commons_catalog_repository.dart';
 import 'mock_search_data.dart';
@@ -57,6 +59,266 @@ final searchDebounceDurationProvider = Provider<Duration>(
 
 final searchControllerProvider =
     NotifierProvider<SearchController, SearchViewState>(SearchController.new);
+
+enum SearchDownloadStatus {
+  available,
+  preparing,
+  requesting,
+  queued,
+  downloading,
+  completed,
+  failed,
+  pendingDeletion,
+  unavailable,
+}
+
+class SearchDownloadViewState {
+  const SearchDownloadViewState({
+    required this.status,
+    this.message,
+    this.progress,
+  });
+
+  final SearchDownloadStatus status;
+  final String? message;
+  final double? progress;
+
+  bool get canActivate => switch (status) {
+    SearchDownloadStatus.available ||
+    SearchDownloadStatus.failed ||
+    SearchDownloadStatus.unavailable => true,
+    _ => false,
+  };
+}
+
+enum SearchDownloadRequestOutcome {
+  requested,
+  alreadyPresent,
+  unavailable,
+  ignored,
+  failed,
+}
+
+class SearchDownloadRequestResult {
+  const SearchDownloadRequestResult(this.outcome, [this.message]);
+
+  final SearchDownloadRequestOutcome outcome;
+  final String? message;
+}
+
+class SearchDownloadRequestState {
+  const SearchDownloadRequestState({
+    required this.isRequesting,
+    this.errorMessage,
+  });
+
+  final bool isRequesting;
+  final String? errorMessage;
+}
+
+final searchDownloadControllerProvider =
+    NotifierProvider<
+      SearchDownloadController,
+      Map<String, SearchDownloadRequestState>
+    >(SearchDownloadController.new);
+
+final searchDownloadStateProvider =
+    Provider.family<SearchDownloadViewState, String>((ref, songId) {
+      if (ref.watch(dataModeProvider) == DataMode.demo) {
+        return const SearchDownloadViewState(
+          status: SearchDownloadStatus.unavailable,
+          message: 'La descarga real no está disponible en modo demostración.',
+        );
+      }
+
+      final request = ref.watch(
+        searchDownloadControllerProvider.select((requests) => requests[songId]),
+      );
+      if (request?.isRequesting ?? false) {
+        return const SearchDownloadViewState(
+          status: SearchDownloadStatus.requesting,
+          message: 'Solicitando descarga…',
+        );
+      }
+      if (request?.errorMessage case final message?) {
+        return SearchDownloadViewState(
+          status: SearchDownloadStatus.failed,
+          message: message,
+        );
+      }
+
+      final session = ref.watch(downloadSessionProvider);
+      return switch (session) {
+        AsyncLoading() => const SearchDownloadViewState(
+          status: SearchDownloadStatus.preparing,
+          message: 'Preparando descargas…',
+        ),
+        AsyncError() => const SearchDownloadViewState(
+          status: SearchDownloadStatus.unavailable,
+          message: 'No se pudo abrir la sesión de descargas.',
+        ),
+        AsyncData(:final value) when value == null =>
+          const SearchDownloadViewState(
+            status: SearchDownloadStatus.unavailable,
+            message: 'La sesión de descargas no está disponible.',
+          ),
+        AsyncData() => _downloadRecordState(
+          ref.watch(downloadEntriesProvider),
+          songId,
+        ),
+      };
+    });
+
+SearchDownloadViewState _downloadRecordState(
+  AsyncValue<List<DownloadEntry>> entries,
+  String songId,
+) => switch (entries) {
+  AsyncLoading() => const SearchDownloadViewState(
+    status: SearchDownloadStatus.preparing,
+    message: 'Comprobando descarga…',
+  ),
+  AsyncError() => const SearchDownloadViewState(
+    status: SearchDownloadStatus.unavailable,
+    message: 'No se pudo consultar el estado de descarga.',
+  ),
+  AsyncData(:final value) => _stateForRecord(
+    value.where((entry) => entry.record.songId == songId).firstOrNull?.record,
+  ),
+};
+
+SearchDownloadViewState _stateForRecord(DownloadRecord? record) {
+  if (record == null) {
+    return const SearchDownloadViewState(
+      status: SearchDownloadStatus.available,
+    );
+  }
+  return switch (record.state) {
+    DownloadState.queued => const SearchDownloadViewState(
+      status: SearchDownloadStatus.queued,
+      message: 'En cola',
+    ),
+    DownloadState.downloading => SearchDownloadViewState(
+      status: SearchDownloadStatus.downloading,
+      progress: record.progress,
+      message: record.progress == null
+          ? 'Descargando…'
+          : 'Descargando ${(record.progress! * 100).round()} %',
+    ),
+    DownloadState.completed => const SearchDownloadViewState(
+      status: SearchDownloadStatus.completed,
+      message: 'Descargada',
+    ),
+    DownloadState.failed => SearchDownloadViewState(
+      status: SearchDownloadStatus.failed,
+      message: record.errorMessage ?? 'Descarga fallida',
+    ),
+    DownloadState.pendingDeletion => const SearchDownloadViewState(
+      status: SearchDownloadStatus.pendingDeletion,
+      message: 'Pendiente de eliminación',
+    ),
+  };
+}
+
+/// UI integration only: an approved resolver must still override
+/// `openDownloadProvider`; Search never treats catalog metadata as permission.
+class SearchDownloadController
+    extends Notifier<Map<String, SearchDownloadRequestState>> {
+  final _inFlight = <String>{};
+
+  @override
+  Map<String, SearchDownloadRequestState> build() {
+    ref.onDispose(_inFlight.clear);
+    return const {};
+  }
+
+  Future<SearchDownloadRequestResult> request(Song song) async {
+    if (ref.read(dataModeProvider) == DataMode.demo) {
+      return const SearchDownloadRequestResult(
+        SearchDownloadRequestOutcome.unavailable,
+        'La descarga real no está disponible en modo demostración.',
+      );
+    }
+    if (!_inFlight.add(song.id)) {
+      return const SearchDownloadRequestResult(
+        SearchDownloadRequestOutcome.ignored,
+      );
+    }
+
+    _setRequest(song.id, const SearchDownloadRequestState(isRequesting: true));
+    try {
+      late final DownloadSession? session;
+      try {
+        session = await ref.read(downloadSessionProvider.future);
+      } catch (_) {
+        const message = 'No se pudo abrir la sesión de descargas.';
+        _setError(song.id, message);
+        return const SearchDownloadRequestResult(
+          SearchDownloadRequestOutcome.unavailable,
+          message,
+        );
+      }
+      if (session == null) {
+        const message = 'La sesión de descargas no está disponible.';
+        _clearRequest(song.id);
+        return const SearchDownloadRequestResult(
+          SearchDownloadRequestOutcome.unavailable,
+          message,
+        );
+      }
+
+      try {
+        final existing = await session.repository.findBySongId(song.id);
+        if (existing != null) {
+          if (existing.state == DownloadState.failed) {
+            await session.repository.retry(song.id);
+            _clearRequest(song.id);
+            return const SearchDownloadRequestResult(
+              SearchDownloadRequestOutcome.requested,
+              'Reintento de descarga solicitado.',
+            );
+          }
+          _clearRequest(song.id);
+          return const SearchDownloadRequestResult(
+            SearchDownloadRequestOutcome.alreadyPresent,
+            'La canción ya tiene una solicitud de descarga.',
+          );
+        }
+
+        await session.repository.enqueue(song);
+        _clearRequest(song.id);
+        return const SearchDownloadRequestResult(
+          SearchDownloadRequestOutcome.requested,
+          'Descarga solicitada.',
+        );
+      } catch (_) {
+        const message = 'No se pudo solicitar la descarga. Inténtalo de nuevo.';
+        _setError(song.id, message);
+        return const SearchDownloadRequestResult(
+          SearchDownloadRequestOutcome.failed,
+          message,
+        );
+      }
+    } finally {
+      _inFlight.remove(song.id);
+    }
+  }
+
+  void _setRequest(String songId, SearchDownloadRequestState request) {
+    state = {...state, songId: request};
+  }
+
+  void _setError(String songId, String message) {
+    _setRequest(
+      songId,
+      SearchDownloadRequestState(isRequesting: false, errorMessage: message),
+    );
+  }
+
+  void _clearRequest(String songId) {
+    final next = {...state}..remove(songId);
+    state = next;
+  }
+}
 
 class SearchController extends Notifier<SearchViewState> {
   Timer? _debounce;
