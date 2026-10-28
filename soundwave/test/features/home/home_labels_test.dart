@@ -187,15 +187,31 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Fling the CustomScrollView to render all sliver sections
-    final customScrollView = find.byType(CustomScrollView);
-    await tester.fling(customScrollView, const Offset(0, -2000), 1000);
-    await tester.pumpAndSettle();
+    Future<void> scrollTo(String label) async {
+      await tester.scrollUntilVisible(
+        find.text(label),
+        500,
+        scrollable: find
+            .descendant(
+              of: find.byType(CustomScrollView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+    }
 
+    await scrollTo('Recientes');
     expect(find.text('Recientes'), findsOneWidget);
+
+    await scrollTo('Favoritos');
     expect(find.text('Favoritos'), findsOneWidget);
+
+    await scrollTo('Recomendados para ti');
     expect(find.text('Recomendados para ti'), findsOneWidget);
+
+    await scrollTo('Artistas principales');
     expect(find.text('Artistas principales'), findsOneWidget);
+
     expect(find.text('Favoritos de ejemplo'), findsNothing);
     expect(find.text('Recomendados de ejemplo'), findsNothing);
   });
