@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
-import '../data/mock_songs.dart';
+import '../../../core/models/song.dart';
 
 class SongCard extends StatelessWidget {
   final Song song;
@@ -59,7 +59,7 @@ class SongCard extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.s4),
                   Text(
-                    song.duration,
+                    song.formattedDuration,
                     style: AppTextStyles.bodySecondary.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 12,
