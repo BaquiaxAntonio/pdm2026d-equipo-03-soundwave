@@ -6,7 +6,7 @@ import 'package:soundwave/features/home/home_providers.dart';
 import 'package:soundwave/features/home/home_screen.dart';
 
 void main() {
-  testWidgets('HomeScreen muestra estado de error con botÃ³n Reintentar', (
+  testWidgets('HomeScreen muestra estado de error con botón Reintentar', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -28,16 +28,16 @@ void main() {
     expect(find.textContaining('Error de red simulado'), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
 
-    // Verificar que el botÃ³n Reintentar es interactuable
+    // Verificar que el botón Reintentar es interactuable
     await tester.tap(find.text('Reintentar'));
     await tester.pump();
 
-    // El botÃ³n deberÃ­a responder al toque (no lanza error)
+    // El botón debería responder al toque (no lanza error)
     expect(find.text('Reintentar'), findsOneWidget);
   });
 
   testWidgets(
-    'HomeScreen muestra estado de datos cuando provider tiene Ã©xito',
+    'HomeScreen muestra estado de datos cuando provider tiene éxito',
     (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -61,9 +61,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Verificar estado de datos
-      expect(find.text('Test Song'), findsOneWidget);
-      expect(find.text('Test Artist'), findsOneWidget);
+      // Verificar estado de datos - la canción aparece en múltiples secciones
+      expect(find.text('Test Song'), findsWidgets);
+      expect(find.text('Test Artist'), findsWidgets);
     },
   );
 }
