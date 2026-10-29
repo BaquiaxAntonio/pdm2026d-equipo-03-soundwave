@@ -18,6 +18,7 @@ revisó y qué se corrigió antes de integrar el cambio.
 ---
 ## 2026-10-29 · @Ortizcarmen — resolución e integración de PR #32 y #36
 
+<<<<<<< Updated upstream
 - **Herramienta:** Codex, por solicitud expresa de integrar los PR conservando los aportes del equipo.
 - **Cambios:** #32 conserva las dos entradas en conflicto y adapta el falso de Búsqueda a `loadDownloads`; #36 conserva Inicio de #40, el reproductor de #38 y Búsqueda de #39, incorpora los estados/reintentos de #32 y conecta Ver todo y Explorar música a la navegación compartida.
 - **Integración:** el Future de Descargas observa el filtro; el stream compartido queda sin filtrar para no ocultar estados de solicitudes en Búsqueda. Se mantienen Dismissible por ID, fallos reversibles, Deshacer por registro y preservación de datos/bytes en SQLite. Un título flexible evita el desbordamiento encontrado en la prueba móvil de scroll.
@@ -75,6 +76,91 @@ revisó y qué se corrigió antes de integrar el cambio.
 - **Verificación:** `dart format lib test`; `flutter test --reporter expanded`: **52 pruebas aprobadas**, incluyendo error y recuperación sin retry automático, carga con Completer, vacío con navegación, datos, eliminación/Deshacer y navegación del MVP. `dart analyze`: sin problemas. `flutter analyze` falló inicialmente en el protocolo LSP con `FormatException`; el SDK usa `message.length` para Content-Length y la ruta contiene una tilde. Con un alias temporal ASCII (`subst W:`), `flutter analyze` pasó sin modificar ni desactivar el análisis.
 - **Entrega:** PR chore/ci #29 integrado con aprobación y checks verdes; ruleset activo de main verificado por API (PR, una aprobación, Code Owners, check de calidad y sin force push). No se intentó push directo a main ni se cambió la protección. No se realizó demostración visual en dispositivo; quedan las capturas de la regla y del push rechazado y la aprobación externa para la entrega del equipo en Moodle.
 - **Commit / PR:** rama `feat/31-estados-descargas`, vinculada con #31; enlace del PR disponible al publicar.
+=======
+## 2026-10-27 · @ramosdeleon555 — agregar a Descargas en modo demo
+
+- **Herramienta:** OpenCode.
+- **Especificación:** hacer que el ícono del reproductor agregue la canción
+  actual a la lista de Descargas en modo demo, sin duplicarla y conservándola
+  al cambiar de pestaña. Estructura y alcance autorizados.
+- **Aceptado:** `DownloadStore.add` actualiza la lista compartida por ID.
+  El comando del reproductor consulta la cola completa para conservar título,
+  artista y duración, independientemente del filtro. Se muestra confirmación
+  de incorporación o aviso de que ya existe en Descargas.
+- **Rechazado / corregido:** se reemplazó el rechazo del modo demo por una
+  integración con su store; no se crea un repositorio separado ni un tamaño
+  de archivo ficticio. Los registros demo duran la sesión y no representan
+  archivos de audio. El flujo SQLite conserva el repositorio de descargas reales.
+- **Verificación:** prueba de incorporación y duplicados; prueba de integración
+  con `MyApp` que inicia reproducción, agrega la canción y cambia entre pestañas.
+  `flutter test --no-pub`: 68 aprobadas, 1 omitida por red;
+  `flutter analyze --no-pub`: sin problemas. Formato Dart aplicado.
+- **Commit / PR:** pendiente.
+
+## 2026-10-27 · @ramosdeleon555 — cierre del aviso y descarga desde reproductor
+
+- **Herramienta:** OpenCode.
+- **Especificación:** cerrar el aviso de bloqueo a los cinco segundos, añadir
+  una X que conserve el bloqueo e integrar un ícono para descargar la canción
+  actual. Archivos y alcance autorizados antes de editar.
+- **Aceptado:** SnackBar con `duration: Duration(seconds: 5)`, `persist: false`
+  y `showCloseIcon: true`. Ícono junto al título que usa `DownloadSession`,
+  resuelve los metadatos canónicos por ID y solicita la descarga o reintenta
+  una fallida. Se evita duplicar solicitudes mientras una está pendiente.
+- **Rechazado / corregido:** cambiar solo `duration` no bastaba, porque esta
+  versión de Flutter conserva por defecto los avisos con acción. No se inventan
+  URLs ni se presentan las canciones mock como descargadas: demo, fuente no
+  disponible, descarga en curso, archivo existente y errores tienen mensajes
+  específicos. La fuente real de audio sigue dependiendo de la integración
+  del catálogo/Descargas.
+- **Verificación:** seis pruebas de widget nuevas para expiración, X, modo demo,
+  ID actual y duplicados, canción sin fuente y recuperación tras error.
+  `flutter test --no-pub test/features/player`: 21 aprobadas;
+  `flutter test --no-pub`: 67 aprobadas, 1 omitida por red;
+  `flutter analyze --no-pub`: sin problemas. Formato Dart aplicado.
+- **Commit / PR:** pendiente.
+
+## 2026-10-27 · @ramosdeleon555 — Deshacer al bloquear una canción
+
+- **Herramienta:** OpenCode.
+- **Especificación:** añadir Deshacer al botón Bloquear canción y recuperar la
+  canción seleccionada con su tiempo anterior; estructura confirmada por el autor.
+- **Aceptado:** SnackBar con el título y Deshacer; captura inmutable de ID,
+  progreso y estado de reproducción. La reversión recupera esos valores incluso
+  después de bloquear la última canción disponible.
+- **Rechazado / corregido:** no se usa el índice para identificar la canción ni
+  se conserva una referencia a un store que la actualización de la cola pudiera
+  haber descartado. No se reinserta una canción retirada de la cola. Bloquear la
+  última pista detiene el temporizador. Los bloqueos siguen siendo de sesión.
+- **Verificación:** `flutter test --no-pub test/features/player`: 15 aprobadas;
+  `flutter test --no-pub`: 61 aprobadas, 1 omitida por red;
+  `flutter analyze --no-pub`: sin problemas. Formato Dart aplicado.
+- **Commit / PR:** pendiente.
+
+## 2026-10-27 · @ramosdeleon555 — laboratorio de cola del reproductor
+
+- **Herramienta:** OpenCode.
+- **Especificación:** aplicar el laboratorio de navegación, filtros y borrar con
+  Deshacer al módulo de reproducción, con estructura aprobada antes de editar.
+- **Resultado / aceptado:** cola con filtro inmutable en Notifier, listado
+  dependiente de `ref.watch`, estados de carga/error/vacío/datos y Dismissible
+  identificado por ID. La eliminación espera al repositorio y Deshacer restaura
+  la entrada y su posición. SQLite en Android; demostración en memoria en otros
+  destinos, siguiendo la configuración existente del proyecto.
+- **Rechazado / corregido:** bloquear no sustituye borrar. La cola del laboratorio
+  es independiente de las descargas; no borra archivos de audio. La inicialización
+  ocurre solo una vez para no reinsertar canciones eliminadas al reiniciar.
+  El filtro no modifica la canción actual ni reinicia su progreso. Se corrigió
+  la selección del repositorio para respetar `dataModeProvider`; el estado de
+  carga usa texto para evitar animaciones continuas en pestañas no visibles.
+- **Verificación:** `flutter test --no-pub`: 56 aprobadas, 1 omitida por red.
+  Incluye 5 pruebas de widget nuevas y 1 prueba SQLite que cierra y reabre la
+  base tras borrar y restaurar. `flutter analyze --no-pub`: sin problemas.
+  Formato Dart comprobado en los archivos modificados. Falta validación manual
+  en un dispositivo Android y ejecución del CI en el PR.
+- **Commit / PR:** pendiente. La navegación global requiere integración del equipo.
+
+>>>>>>> Stashed changes
 ## 2026-10-22 · @ramosdeleon555 — revisión del reproductor y evidencia
 
 - **Herramienta:** opencode.
