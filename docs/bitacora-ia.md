@@ -18,7 +18,7 @@ revisó y qué se corrigió antes de integrar el cambio.
 ---
 ## 2026-10-29 · @Ortizcarmen — resolución e integración de PR #32 y #36
 
-<<<<<<< Updated upstream
+ Updated upstream
 - **Herramienta:** Codex, por solicitud expresa de integrar los PR conservando los aportes del equipo.
 - **Cambios:** #32 conserva las dos entradas en conflicto y adapta el falso de Búsqueda a `loadDownloads`; #36 conserva Inicio de #40, el reproductor de #38 y Búsqueda de #39, incorpora los estados/reintentos de #32 y conecta Ver todo y Explorar música a la navegación compartida.
 - **Integración:** el Future de Descargas observa el filtro; el stream compartido queda sin filtrar para no ocultar estados de solicitudes en Búsqueda. Se mantienen Dismissible por ID, fallos reversibles, Deshacer por registro y preservación de datos/bytes en SQLite. Un título flexible evita el desbordamiento encontrado en la prueba móvil de scroll.
@@ -76,7 +76,7 @@ revisó y qué se corrigió antes de integrar el cambio.
 - **Verificación:** `dart format lib test`; `flutter test --reporter expanded`: **52 pruebas aprobadas**, incluyendo error y recuperación sin retry automático, carga con Completer, vacío con navegación, datos, eliminación/Deshacer y navegación del MVP. `dart analyze`: sin problemas. `flutter analyze` falló inicialmente en el protocolo LSP con `FormatException`; el SDK usa `message.length` para Content-Length y la ruta contiene una tilde. Con un alias temporal ASCII (`subst W:`), `flutter analyze` pasó sin modificar ni desactivar el análisis.
 - **Entrega:** PR chore/ci #29 integrado con aprobación y checks verdes; ruleset activo de main verificado por API (PR, una aprobación, Code Owners, check de calidad y sin force push). No se intentó push directo a main ni se cambió la protección. No se realizó demostración visual en dispositivo; quedan las capturas de la regla y del push rechazado y la aprobación externa para la entrega del equipo en Moodle.
 - **Commit / PR:** rama `feat/31-estados-descargas`, vinculada con #31; enlace del PR disponible al publicar.
-=======
+
 ## 2026-10-27 · @ramosdeleon555 — agregar a Descargas en modo demo
 
 - **Herramienta:** OpenCode.
@@ -160,7 +160,7 @@ revisó y qué se corrigió antes de integrar el cambio.
   en un dispositivo Android y ejecución del CI en el PR.
 - **Commit / PR:** pendiente. La navegación global requiere integración del equipo.
 
->>>>>>> Stashed changes
+ Stashed changes
 ## 2026-10-22 · @ramosdeleon555 — revisión del reproductor y evidencia
 
 - **Herramienta:** opencode.
