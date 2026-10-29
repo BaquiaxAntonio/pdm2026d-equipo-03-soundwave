@@ -549,6 +549,10 @@ class _FakeDownloadRepository implements DownloadRepository {
   }
 
   @override
+  Future<List<DownloadRecord>> loadDownloads() async =>
+      List.unmodifiable(_records.values);
+
+  @override
   Stream<List<DownloadRecord>> watchDownloads() async* {
     yield List.unmodifiable(_records.values);
     yield* _changes.stream;

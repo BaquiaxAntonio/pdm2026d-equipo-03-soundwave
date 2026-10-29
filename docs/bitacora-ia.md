@@ -17,6 +17,24 @@ revisó y qué se corrigió antes de integrar el cambio.
 
 ---
 
+## 2026-10-29 · @Ortizcarmen — integración del PR #32 con main
+
+- **Herramienta:** Codex.
+- **Solicitud:** resolver conflictos preservando los aportes de todos; sin cambiar protecciones ni stashes.
+- **Cambio:** integración de `main` (`9d21967`, incluye #38, #39 y #40), conservación de ambas entradas de la bitácora y adaptación del repositorio falso de Búsqueda al contrato `loadDownloads` de #32.
+- **Verificación local:** copia aislada con ruta ASCII y caché nueva; `flutter pub get`, formato, análisis sin incidencias y suite completa con 128 aprobadas, 0 fallidas y 1 prueba externa omitida. No se declara descarga externa ni reproducción real.
+- **Entrega:** actualización del PR #32; compilación y checks remotos se verifican después de publicar.
+
+## 2026-10-18 · @Ortizcarmen — S14, estados de Descargas (pasos 5 y 6)
+
+- **Herramienta:** Codex.
+- **Especificación:** leer las dos páginas del laboratorio, verificar el paso 4 de Henry (`66f9e52`), implementar cuatro estados y pruebas widget con overrides, conservar SQLite, eliminación y Deshacer, y publicar el PR de #31.
+- **Resultado / aceptado:** `repository_download_view.dart` consume `downloadEntriesFutureProvider` con `AsyncValue.when`; conserva el Stream para invalidar el snapshot ante cambios reales. Error humano con Reintentar, vacío con navegación a Buscar y regreso, carga y lista con el diseño existente. El modo demo existente se conserva.
+- **Archivos:** pantalla anterior y `test/features/downloads/repository_download_view_test.dart`; formato de `download_providers.dart` y `download_entries_future_provider_test.dart`; esta bitácora. Contrato Future, SQLite, falsos y retry desactivado del paso 4 verificados sin crear otra arquitectura.
+- **Rechazado / corregido:** la primera ejecución de pruebas detectó doble invalidación del Future al refrescar el Stream y ausencia de botón Atrás en la ruta de búsqueda; se evitó invalidar con valores retenidos durante loading y se agregó AppBar. No se recrea la sesión SQLite al recuperarse de un fallo de lectura. Se excluyeron archivos generados por Flutter.
+- **Verificación:** `dart format lib test`; `flutter test --reporter expanded`: **52 pruebas aprobadas**, incluyendo error y recuperación sin retry automático, carga con Completer, vacío con navegación, datos, eliminación/Deshacer y navegación del MVP. `dart analyze`: sin problemas. `flutter analyze` falló inicialmente en el protocolo LSP con `FormatException`; el SDK usa `message.length` para Content-Length y la ruta contiene una tilde. Con un alias temporal ASCII (`subst W:`), `flutter analyze` pasó sin modificar ni desactivar el análisis.
+- **Entrega:** PR chore/ci #29 integrado con aprobación y checks verdes; ruleset activo de main verificado por API (PR, una aprobación, Code Owners, check de calidad y sin force push). No se intentó push directo a main ni se cambió la protección. No se realizó demostración visual en dispositivo; quedan las capturas de la regla y del push rechazado y la aprobación externa para la entrega del equipo en Moodle.
+- **Commit / PR:** rama `feat/31-estados-descargas`, vinculada con #31; enlace del PR disponible al publicar.
 ## 2026-10-22 · @ramosdeleon555 — revisión del reproductor y evidencia
 
 - **Herramienta:** opencode.

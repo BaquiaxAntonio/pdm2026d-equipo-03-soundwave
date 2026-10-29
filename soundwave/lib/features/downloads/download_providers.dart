@@ -40,8 +40,27 @@ final downloadUndoDurationProvider = Provider<Duration>(
 final downloadSessionProvider = FutureProvider<DownloadSession?>((ref) async {
   if (ref.watch(dataModeProvider) == DataMode.demo) return null;
   return platform.createSession(ref);
-});
+}, retry: (_, _) => null);
 
+/// Snapshot used by the asynchronous-state screen. Explicitly disable
+/// Riverpod's automatic retry so an error remains visible until the user taps
+/// the UI's retry action.
+final downloadEntriesFutureProvider = FutureProvider<List<DownloadEntry>>((
+  ref,
+) async {
+  final session = await ref.watch(downloadSessionProvider.future);
+  if (session == null) return [];
+  final records = await session.repository.loadDownloads();
+  return Future.wait(
+    records.map(
+      (record) async =>
+          DownloadEntry(record, await session.findSong(record.songId)),
+    ),
+  );
+}, retry: (_, _) => null);
+
+/// Live updates remain available for the current downloads management view.
+/// The four-state screen will use [downloadEntriesFutureProvider].
 final downloadEntriesProvider = StreamProvider<List<DownloadEntry>>((
   ref,
 ) async* {
