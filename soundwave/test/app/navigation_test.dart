@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/features/downloads/download_screen.dart';
-import 'package:soundwave/features/downloads/downloads_screen.dart';
 import 'package:soundwave/features/home/home_screen.dart';
 import 'package:soundwave/features/home/home_providers.dart';
 import 'package:soundwave/features/search/search_screen.dart';
@@ -73,7 +72,6 @@ void main() {
         3,
       );
       expect(find.byType(DownloadScreen), findsOneWidget);
-      expect(find.byType(DownloadsScreen, skipOffstage: false), findsNothing);
     },
   );
 
@@ -91,7 +89,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Ver todo'));
+    await tester.scrollUntilVisible(
+      find.text('Ver todo').first,
+      250,
+      scrollable: find
+          .descendant(
+            of: find.byType(HomeScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(find.text('Ver todo').first);
     await tester.pumpAndSettle();
 
     expect(find.byType(SearchScreen), findsOneWidget);
@@ -120,11 +128,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final homeScroll = Scrollable.of(tester.element(find.text('Recientes')));
-    await tester.drag(
-      find.byType(SingleChildScrollView),
-      const Offset(0, -360),
+    final homeScroll = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byType(HomeScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -360));
     await tester.pumpAndSettle();
     final initialOffset = homeScroll.position.pixels;
     expect(initialOffset, greaterThan(0));

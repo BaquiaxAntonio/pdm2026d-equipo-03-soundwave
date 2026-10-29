@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../app/navigation_provider.dart';
 import '../../core/models/download_record.dart';
 import 'download_cover.dart';
 import 'download_providers.dart';
@@ -58,8 +59,15 @@ class RepositoryDownloadView extends ConsumerWidget {
       return false;
     }
 
+    // The Future owns initial loading/errors; the unfiltered stream keeps its
+    // snapshot current after download, removal and Undo mutations.
+    ref.listen(downloadEntriesProvider, (previous, next) {
+      if (previous?.hasValue == true && next.hasValue && !next.isLoading) {
+        ref.invalidate(downloadEntriesFutureProvider);
+      }
+    });
     final filter = ref.watch(downloadFilterProvider);
-    final entries = ref.watch(downloadEntriesProvider);
+    final entries = ref.watch(downloadEntriesFutureProvider);
     return Theme(
       data: DownloadTheme.data,
       child: Scaffold(
@@ -73,11 +81,16 @@ class RepositoryDownloadView extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('No se pudieron cargar tus descargas.'),
+                      const Text('No pudimos cargar tus descargas'),
                       FilledButton(
                         onPressed: () {
-                          ref.invalidate(downloadSessionProvider);
-                          ref.invalidate(downloadEntriesProvider);
+                          if (ref.read(downloadSessionProvider).hasError) {
+                            ref.invalidate(downloadSessionProvider);
+                          }
+                          ref.invalidate(downloadEntriesFutureProvider);
+                          if (ref.read(downloadEntriesProvider).hasError) {
+                            ref.invalidate(downloadEntriesProvider);
+                          }
                         },
                         child: const Text('Reintentar'),
                       ),
@@ -159,12 +172,22 @@ class RepositoryDownloadView extends ConsumerWidget {
                       const SizedBox(height: 24),
                       if (visible.isEmpty)
                         Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Text(
-                            filter.completedOnly
-                                ? 'No hay descargas completadas.'
-                                : 'Tu próxima colección empieza aquí.\nLas canciones que descargues aparecerán en esta lista.',
-                            textAlign: TextAlign.center,
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            children: [
+                              Text(
+                                filter.completedOnly
+                                    ? 'No hay descargas completadas.'
+                                    : 'Aún no tienes canciones descargadas.\nLas canciones que descargues aparecerán en esta lista.',
+                                textAlign: TextAlign.center,
+                              ),
+                              FilledButton(
+                                onPressed: () => ref
+                                    .read(activeTabProvider.notifier)
+                                    .select(AppTab.search),
+                                child: const Text('Explorar música'),
+                              ),
+                            ],
                           ),
                         ),
                       for (final entry in visible)

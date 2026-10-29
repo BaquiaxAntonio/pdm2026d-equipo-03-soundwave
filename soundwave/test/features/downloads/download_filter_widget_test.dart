@@ -21,6 +21,9 @@ class FilterRepository extends FakeDownloadRepository {
   ];
 
   @override
+  Future<List<DownloadRecord>> loadDownloads() async => snapshot;
+
+  @override
   Stream<List<DownloadRecord>> watchDownloads() => Stream.value(snapshot);
 }
 

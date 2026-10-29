@@ -13,6 +13,9 @@ class _SnapshotDownloadRepository extends FakeDownloadRepository {
   final List<DownloadRecord> snapshot;
 
   @override
+  Future<List<DownloadRecord>> loadDownloads() async => snapshot;
+
+  @override
   Stream<List<DownloadRecord>> watchDownloads() => Stream.value(snapshot);
 }
 
@@ -39,14 +42,19 @@ void main() {
       addTearDown(container.dispose);
       addTearDown(repository.dispose);
       final completedUpdate = Completer<List<DownloadEntry>>();
-      final subscription = container.listen(downloadEntriesProvider, (_, next) {
+      final subscription = container.listen(downloadEntriesFutureProvider, (
+        _,
+        next,
+      ) {
         if (next.hasValue && next.value!.length == 1) {
           completedUpdate.complete(next.value!);
         }
       });
       addTearDown(subscription.close);
 
-      final allEntries = await container.read(downloadEntriesProvider.future);
+      final allEntries = await container.read(
+        downloadEntriesFutureProvider.future,
+      );
       expect(allEntries.map((entry) => entry.record.songId), [
         'song:completed',
         'song:queued',
@@ -61,6 +69,16 @@ void main() {
       expect(completedEntries.single.record.songId, completed.songId);
       expect(initialFilter.completedOnly, isFalse);
       expect(container.read(downloadFilterProvider).completedOnly, isTrue);
+      // Downloads filters never hide in-progress entries from Search/playback.
+      final sharedSubscription = container.listen(
+        downloadEntriesProvider,
+        (_, _) {},
+      );
+      addTearDown(sharedSubscription.close);
+      final sharedEntries = await container.read(
+        downloadEntriesProvider.future,
+      );
+      expect(sharedEntries, hasLength(2));
     },
   );
 }

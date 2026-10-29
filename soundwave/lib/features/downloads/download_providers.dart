@@ -74,12 +74,38 @@ final downloadUndoDurationProvider = Provider<Duration>(
 final downloadSessionProvider = FutureProvider<DownloadSession?>((ref) async {
   if (ref.watch(dataModeProvider) == DataMode.demo) return null;
   return platform.createSession(ref);
-});
+}, retry: (_, _) => null);
 
+/// Snapshot used by the asynchronous-state screen. Explicitly disable
+/// Riverpod's automatic retry so an error remains visible until the user taps
+/// the UI's retry action.
+final downloadEntriesFutureProvider = FutureProvider<List<DownloadEntry>>((
+  ref,
+) async {
+  final filter = ref.watch(downloadFilterProvider);
+  final session = await ref.watch(downloadSessionProvider.future);
+  if (session == null) return [];
+  final records = await session.repository.loadDownloads();
+  final entries = await Future.wait(
+    records.map(
+      (record) async =>
+          DownloadEntry(record, await session.findSong(record.songId)),
+    ),
+  );
+  return List.unmodifiable(
+    entries.where(
+      (entry) =>
+          entry.record.state == DownloadState.pendingDeletion ||
+          filter.matches(entry),
+    ),
+  );
+}, retry: (_, _) => null);
+
+/// Unfiltered live state shared with Search and playback. UI filters must not
+/// hide queued or failed downloads from other modules.
 final downloadEntriesProvider = StreamProvider<List<DownloadEntry>>((
   ref,
 ) async* {
-  final filter = ref.watch(downloadFilterProvider);
   final session = await ref.watch(downloadSessionProvider.future);
   if (session == null) {
     yield [];
@@ -92,13 +118,6 @@ final downloadEntriesProvider = StreamProvider<List<DownloadEntry>>((
             DownloadEntry(record, await session.findSong(record.songId)),
       ),
     );
-    // Keep pending removals available to the existing Undo UI for phase 2.
-    yield List.unmodifiable(
-      entries.where(
-        (entry) =>
-            entry.record.state == DownloadState.pendingDeletion ||
-            filter.matches(entry),
-      ),
-    );
+    yield List.unmodifiable(entries);
   }
 });

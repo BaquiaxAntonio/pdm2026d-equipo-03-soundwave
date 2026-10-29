@@ -5,6 +5,18 @@ import 'package:flutter/foundation.dart';
 import 'mock_player_data.dart';
 import 'player_song_local.dart';
 
+class BlockedSongSnapshot {
+  const BlockedSongSnapshot({
+    required this.songId,
+    required this.progressSeconds,
+    required this.wasPlaying,
+  });
+
+  final String songId;
+  final int progressSeconds;
+  final bool wasPlaying;
+}
+
 // Estado in-memory solo para player, sin dependencias externas.
 // Motivo: persistencia en sesión sin esperar al estado global (issue #9).
 class PlayerStore extends ChangeNotifier {
@@ -74,13 +86,43 @@ class PlayerStore extends ChangeNotifier {
   }
 
   // Issue #8: la bloqueada no vuelve a sonar en la sesión.
-  void blockCurrent() {
+  BlockedSongSnapshot? blockCurrent() {
     final song = currentSong;
-    if (song == null) return;
+    if (song == null) return null;
+    final snapshot = BlockedSongSnapshot(
+      songId: song.id,
+      progressSeconds: progressSeconds,
+      wasPlaying: isPlaying,
+    );
     blockedIds.add(song.id);
     progressSeconds = 0;
     if (_index >= playableSongs.length) _index = 0;
+    if (playableSongs.isEmpty) {
+      isPlaying = false;
+      _timer?.cancel();
+    }
     notifyListeners();
+    return snapshot;
+  }
+
+  bool undoBlock(BlockedSongSnapshot snapshot) {
+    // Una canción quitada de la cola no debe reaparecer al deshacer un bloqueo.
+    if (!_songs.any((song) => song.id == snapshot.songId) ||
+        !blockedIds.remove(snapshot.songId)) {
+      return false;
+    }
+    final songs = playableSongs;
+    _index = songs.indexWhere((song) => song.id == snapshot.songId);
+    progressSeconds = snapshot.progressSeconds.clamp(
+      0,
+      songs[_index].durationSeconds,
+    );
+    if (snapshot.wasPlaying) {
+      play();
+    } else {
+      pause();
+    }
+    return true;
   }
 
   void _startTimer() {
