@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_theme.dart';
+import '../../app/navigation_provider.dart';
 import '../../core/models/song.dart';
 import 'home_providers.dart';
 
@@ -12,7 +13,7 @@ class HomeScreen extends ConsumerWidget {
     final asyncSongs = ref.watch(homeSongsProvider);
 
     return Scaffold(
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(context, ref),
       body: SafeArea(
         child: asyncSongs.when(
           loading: () => const _LoadingState(),
@@ -31,7 +32,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
     return AppBar(
       automaticallyImplyLeading: false,
       title: Text(
@@ -41,7 +42,8 @@ class HomeScreen extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.search_rounded),
-          onPressed: () {},
+          onPressed: () =>
+              ref.read(activeTabProvider.notifier).select(AppTab.search),
           tooltip: 'Buscar',
         ),
         const SizedBox(width: AppSpacing.s8),
@@ -158,13 +160,13 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends ConsumerWidget {
   final List<Song> songs;
 
   const _HomeContent({required this.songs});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 800;
     final isTablet = width >= 600 && width < 800;
@@ -189,7 +191,12 @@ class _HomeContent extends StatelessWidget {
               ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _SectionHeader(title: 'Recientes', onSeeAll: () {}),
+                  _SectionHeader(
+                    title: 'Recientes',
+                    onSeeAll: () => ref
+                        .read(activeTabProvider.notifier)
+                        .select(AppTab.search),
+                  ),
                   const SizedBox(height: AppSpacing.s12),
                   _ResponsiveSongGrid(
                     songs: recent,
@@ -201,7 +208,12 @@ class _HomeContent extends StatelessWidget {
                     childAspectRatio: 0.7,
                   ),
                   const SizedBox(height: AppSpacing.s32),
-                  _SectionHeader(title: 'Favoritos', onSeeAll: () {}),
+                  _SectionHeader(
+                    title: 'Favoritos',
+                    onSeeAll: () => ref
+                        .read(activeTabProvider.notifier)
+                        .select(AppTab.search),
+                  ),
                   const SizedBox(height: AppSpacing.s12),
                   _ResponsiveSongGrid(
                     songs: favorites,
@@ -215,7 +227,9 @@ class _HomeContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.s32),
                   _SectionHeader(
                     title: 'Recomendados para ti',
-                    onSeeAll: () {},
+                    onSeeAll: () => ref
+                        .read(activeTabProvider.notifier)
+                        .select(AppTab.search),
                   ),
                   const SizedBox(height: AppSpacing.s12),
                   _ResponsiveSongGrid(
@@ -231,7 +245,9 @@ class _HomeContent extends StatelessWidget {
                     const SizedBox(height: AppSpacing.s32),
                     _SectionHeader(
                       title: 'Artistas principales',
-                      onSeeAll: () {},
+                      onSeeAll: () => ref
+                          .read(activeTabProvider.notifier)
+                          .select(AppTab.search),
                     ),
                     const SizedBox(height: AppSpacing.s12),
                     _ArtistGrid(
@@ -585,11 +601,13 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: AppTextStyles.sectionTitle.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
+        Expanded(
+          child: Text(
+            title,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         TextButton(

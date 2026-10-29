@@ -283,6 +283,11 @@ void main() {
     downloads.setRecord(_downloadRecord(song.id, DownloadState.queued));
     await _pumpDownloadScreen(tester, song: song, downloads: downloads);
 
+    // The Downloads tab's filter must not hide queued/failed states in Search.
+    ProviderScope.containerOf(
+      tester.element(find.byType(SearchScreen)),
+    ).read(downloadFilterProvider.notifier).showCompleted();
+    await tester.pumpAndSettle();
     expect(find.text('En cola'), findsOneWidget);
 
     downloads.setRecord(

@@ -21,6 +21,40 @@ class DownloadEntry {
   final Song? song;
 }
 
+/// Immutable criteria for the repository-backed downloads list.
+class DownloadFilter {
+  const DownloadFilter({this.completedOnly = false});
+
+  final bool completedOnly;
+
+  DownloadFilter copyWith({bool? completedOnly}) =>
+      DownloadFilter(completedOnly: completedOnly ?? this.completedOnly);
+
+  bool matches(DownloadEntry entry) =>
+      !completedOnly || entry.record.state == DownloadState.completed;
+
+  @override
+  bool operator ==(Object other) =>
+      other is DownloadFilter && other.completedOnly == completedOnly;
+
+  @override
+  int get hashCode => completedOnly.hashCode;
+}
+
+final downloadFilterProvider =
+    NotifierProvider<DownloadFilterNotifier, DownloadFilter>(
+      DownloadFilterNotifier.new,
+    );
+
+class DownloadFilterNotifier extends Notifier<DownloadFilter> {
+  @override
+  DownloadFilter build() => const DownloadFilter();
+
+  void showAll() => state = state.copyWith(completedOnly: false);
+
+  void showCompleted() => state = state.copyWith(completedOnly: true);
+}
+
 /// API/search supplies the resolver when a permitted provider is agreed.
 final openDownloadProvider = Provider<OpenDownload>(
   (ref) => platform.unavailable,
@@ -48,19 +82,27 @@ final downloadSessionProvider = FutureProvider<DownloadSession?>((ref) async {
 final downloadEntriesFutureProvider = FutureProvider<List<DownloadEntry>>((
   ref,
 ) async {
+  final filter = ref.watch(downloadFilterProvider);
   final session = await ref.watch(downloadSessionProvider.future);
   if (session == null) return [];
   final records = await session.repository.loadDownloads();
-  return Future.wait(
+  final entries = await Future.wait(
     records.map(
       (record) async =>
           DownloadEntry(record, await session.findSong(record.songId)),
     ),
   );
+  return List.unmodifiable(
+    entries.where(
+      (entry) =>
+          entry.record.state == DownloadState.pendingDeletion ||
+          filter.matches(entry),
+    ),
+  );
 }, retry: (_, _) => null);
 
-/// Live updates remain available for the current downloads management view.
-/// The four-state screen will use [downloadEntriesFutureProvider].
+/// Unfiltered live state shared with Search and playback. UI filters must not
+/// hide queued or failed downloads from other modules.
 final downloadEntriesProvider = StreamProvider<List<DownloadEntry>>((
   ref,
 ) async* {
@@ -70,11 +112,12 @@ final downloadEntriesProvider = StreamProvider<List<DownloadEntry>>((
     return;
   }
   await for (final records in session.repository.watchDownloads()) {
-    yield await Future.wait(
+    final entries = await Future.wait(
       records.map(
         (record) async =>
             DownloadEntry(record, await session.findSong(record.songId)),
       ),
     );
+    yield List.unmodifiable(entries);
   }
 });

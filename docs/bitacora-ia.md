@@ -16,7 +16,47 @@ revisó y qué se corrigió antes de integrar el cambio.
 | Commit / PR | Enlace cuando exista |
 
 ---
+## 2026-10-29 · @Ortizcarmen — resolución e integración de PR #32 y #36
 
+- **Herramienta:** Codex, por solicitud expresa de integrar los PR conservando los aportes del equipo.
+- **Cambios:** #32 conserva las dos entradas en conflicto y adapta el falso de Búsqueda a `loadDownloads`; #36 conserva Inicio de #40, el reproductor de #38 y Búsqueda de #39, incorpora los estados/reintentos de #32 y conecta Ver todo y Explorar música a la navegación compartida.
+- **Integración:** el Future de Descargas observa el filtro; el stream compartido queda sin filtrar para no ocultar estados de solicitudes en Búsqueda. Se mantienen Dismissible por ID, fallos reversibles, Deshacer por registro y preservación de datos/bytes en SQLite. Un título flexible evita el desbordamiento encontrado en la prueba móvil de scroll.
+- **Verificación local:** copias aisladas con ruta ASCII y caché nueva, sin tocar la rama original ni stashes. #32: análisis sin incidencias, 128 pruebas aprobadas y 1 externa omitida. Combinación final de #36: 136 aprobadas, 0 fallidas, 1 externa omitida; incluye Búsqueda con filtro Completadas activo y navegación/scroll sobre el rediseño. Dependencias resueltas sin cambios de lockfile. APK y CI se informan con sus resultados reales después de publicar.
+- **Límites:** no se configura el resolver de descarga, no se añade motor de audio, ni se declara validación funcional en dispositivo o modo avión. No se modifican protecciones ni se aprueban PR desde otras cuentas.
+
+
+## 2026-10-25 · Laboratorio 4, fase de eliminación y Deshacer
+
+- **Herramienta:** Codex.
+- **Solicitud:** completar la rama compartida y el PR #36 sin rehacer la
+  navegación y los filtros de Henry; conservar cambios y stashes existentes.
+- **Revisión:** se leyeron las dos páginas de `Lab4 D.pdf`, el código y el PR.
+  No se encontró `AGENTS.md` en el repositorio. Navegación con Notifier,
+  IndexedStack, Ver todo, scroll y filtro dependiente ya estaban implementados.
+- **Implementación:** Dismissible con `ValueKey(songId)` y escritura en el
+  repositorio antes de retirar la fila. Se reutilizan `requestRemoval` y
+  `undoRemoval`: eliminación lógica persistente, plazo individual de Deshacer
+  y limpieza física posterior cuando el coordinador autoriza liberar el audio.
+  El último SnackBar corresponde a la última eliminación; las anteriores
+  conservan su botón de Deshacer individual durante su plazo.
+- **Corregido / rechazado:** no se añadió otro repositorio ni se borraron
+  archivos de audio directamente desde la UI. `confirmDismiss` retorna false
+  porque el stream retira la fila tras persistir; así no queda un Dismissible
+  descartado en el árbol. Si falla la escritura, la fila vuelve a su posición.
+  Se conservaron las fechas originales al eliminar/restaurar para que el mapa
+  del registro restaurado sea idéntico. Se corrigió el formato de `main.dart`,
+  causa del fallo previo de CI.
+- **Verificación local:** `flutter pub get`, `dart format lib test`,
+  `flutter analyze` (sin incidencias), `flutter test` (58 aprobadas, 0 fallidas,
+  1 prueba de red externa omitida). Pruebas widget de filtro y vacío, deslizar,
+  Deshacer, fallos de eliminación/restauración y eliminaciones consecutivas
+  asíncronas con filtro activo. Prueba SQLite con cierres/reaperturas reales:
+  eliminación pendiente persiste, restauración conserva el mapa completo y
+  bytes, no hay duplicados y eliminación vencida se finaliza al autorizarse.
+  Se usó la unidad W: para evitar problemas de rutas con tildes en Windows.
+  No se realizó comprobación visual en dispositivo o emulador.
+- **Entrega:** PR #36; aprobación por otra pareja e integración en main
+  dependen de revisión humana. No se fusionó el PR.
 ## 2026-10-29 · @Ortizcarmen — integración del PR #32 con main
 
 - **Herramienta:** Codex.
