@@ -12,12 +12,12 @@ void main() {
 
   test('filtra por título sin distinguir mayúsculas', () {
     final results = filterSearchSongs(mockSearchSongs, 'NOCHE');
-    expect(results.map((s) => s.id), ['s4']);
+    expect(results.map((s) => s.id), ['demo:s4']);
   });
 
   test('filtra por artista', () {
     final results = filterSearchSongs(mockSearchSongs, 'campus');
-    expect(results.map((s) => s.id), ['s2', 's5']);
+    expect(results.map((s) => s.id), ['demo:s2', 'demo:s5']);
   });
 
   test('sin coincidencias devuelve lista vacía', () {
