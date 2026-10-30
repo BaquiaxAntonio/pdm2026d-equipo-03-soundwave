@@ -4,7 +4,7 @@ const commonsProviderId = 'wikimedia_commons';
 
 /// Catalog data observed in Commons, kept separate from download permission.
 ///
-/// Legal metadata remains here until the shared persistence model is agreed.
+/// Legal metadata is also copied into the shared song model for persistence.
 /// Neither [mediaUrl] nor the license fields imply that a download is allowed.
 class CommonsCatalogItem {
   const CommonsCatalogItem({
@@ -100,6 +100,10 @@ CommonsCatalogItem? _parsePage(Object? value) {
       durationMs: _durationMs(imageInfo['duration']),
       provider: commonsProviderId,
       sourceId: sourceId,
+      license: _nonEmptyString(_metadataString(extendedMetadata, 'LicenseShortName')),
+      licenseUrl: _absoluteUri(_metadataString(extendedMetadata, 'LicenseUrl'))?.toString(),
+      attribution: creditText == null || creditText.isEmpty ? null : creditText,
+      sourceUrl: (descriptionUrl ?? Uri.https('commons.wikimedia.org', '/w/index.php', {'curid': sourceId})).toString(),
     ),
     sourcePageUrl:
         descriptionUrl ??
