@@ -7,7 +7,9 @@ import 'package:soundwave/core/database/download_dao.dart';
 import 'package:soundwave/core/database/playlist_dao.dart';
 import 'package:soundwave/core/database/schema.dart';
 import 'package:soundwave/core/database/song_dao.dart';
+import 'package:soundwave/core/database/user_dao.dart';
 import 'package:soundwave/core/models/download_record.dart';
+import 'package:soundwave/core/models/app_user.dart';
 import 'package:soundwave/core/models/song.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -167,5 +169,19 @@ void main() {
     expect(await blockedSongs.songIds('offline'), {song.id});
     await songs.delete(song.id);
     expect(await blockedSongs.songIds('offline'), isEmpty);
+  });
+
+  test('registers users and verifies password without storing plaintext', () async {
+    final dao = UserDao(database);
+    final user = await dao.register(username: 'Henry', displayName: 'Henry B', password: 'correct-horse-1');
+    expect((await dao.signIn(username: 'henry', password: 'correct-horse-1'))?.id, user.id);
+    expect(await dao.signIn(username: 'henry', password: 'wrong-password'), isNull);
+    final row = (await database.query('users')).single;
+    expect(row['password_hash'], isNot('correct-horse-1'));
+    expect(await dao.all(), hasLength(1));
+    await dao.update(AppUser(id: user.id, username: 'Henry2'));
+    expect((await dao.findById(user.id))?.username, 'Henry2');
+    await dao.delete(user.id);
+    expect(await dao.all(), isEmpty);
   });
 }

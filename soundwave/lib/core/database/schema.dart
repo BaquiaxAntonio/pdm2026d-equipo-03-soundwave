@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 const databaseName = 'soundwave.db';
-const databaseVersion = 1;
+const databaseVersion = 2;
 
 const createSongsTable = '''
 CREATE TABLE songs (
@@ -12,6 +12,10 @@ CREATE TABLE songs (
   artist TEXT NOT NULL,
   duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
   artwork_url TEXT,
+  license TEXT,
+  license_url TEXT,
+  attribution TEXT,
+  source_url TEXT,
   UNIQUE (provider, source_id)
 )
 ''';
@@ -59,12 +63,22 @@ CREATE TABLE blocked_songs (
 )
 ''';
 
+const createUsersTable = '''
+CREATE TABLE users (
+ id TEXT PRIMARY KEY,
+ username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+ display_name TEXT,
+ password_hash TEXT NOT NULL
+)
+''';
+
 const createSchemaStatements = [
   createSongsTable,
   createDownloadsTable,
   createPlaylistsTable,
   createPlaylistSongsTable,
   createBlockedSongsTable,
+  createUsersTable,
   'CREATE INDEX idx_songs_title ON songs(title COLLATE NOCASE)',
   'CREATE INDEX idx_songs_artist ON songs(artist COLLATE NOCASE)',
   'CREATE INDEX idx_downloads_state ON downloads(state)',
@@ -83,5 +97,12 @@ Future<void> upgradeDatabaseSchema(
 ) async {
   if (oldVersion < 1 && newVersion >= 1) {
     await createDatabaseSchema(database);
+  }
+  if (oldVersion < 2 && newVersion >= 2) {
+    await database.execute('ALTER TABLE songs ADD COLUMN license TEXT');
+    await database.execute('ALTER TABLE songs ADD COLUMN license_url TEXT');
+    await database.execute('ALTER TABLE songs ADD COLUMN attribution TEXT');
+    await database.execute('ALTER TABLE songs ADD COLUMN source_url TEXT');
+    await database.execute(createUsersTable);
   }
 }

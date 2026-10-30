@@ -4,6 +4,7 @@ import 'download_dao.dart';
 import 'playlist_dao.dart';
 import 'song_dao.dart';
 import 'soundwave_database.dart';
+import 'user_dao.dart';
 
 final songDaoProvider = FutureProvider<SongDao>(
   (ref) async => SongDao(await ref.watch(soundwaveDatabaseProvider.future)),
@@ -20,4 +21,8 @@ final playlistDaoProvider = FutureProvider<PlaylistDao>(
 final blockedSongDaoProvider = FutureProvider<BlockedSongDao>(
   (ref) async =>
       BlockedSongDao(await ref.watch(soundwaveDatabaseProvider.future)),
+);
+
+final userDaoProvider = FutureProvider<UserDao>(
+  (ref) async => UserDao(await ref.watch(soundwaveDatabaseProvider.future)),
 );

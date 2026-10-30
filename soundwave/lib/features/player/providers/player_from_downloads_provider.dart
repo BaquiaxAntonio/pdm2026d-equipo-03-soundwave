@@ -17,13 +17,11 @@ final playerFromDownloadsProvider = Provider<void>((ref) {
             entry.record.localPath != null &&
             entry.song != null) {
           tracks.add(
-            PlayerTrack(song: entry.song!, localPath: entry.record.localPath),
+            PlayerTrack.fromDownload(entry.song!, entry.record),
           );
         }
       }
-      if (tracks.isNotEmpty) {
-        ref.read(playerControllerProvider.notifier).load(tracks);
-      }
+      ref.read(playerControllerProvider.notifier).load(tracks);
     });
   });
 });
