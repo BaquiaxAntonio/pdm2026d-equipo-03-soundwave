@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 const databaseName = 'soundwave.db';
-const databaseVersion = 1;
+const databaseVersion = 2;
 
 const createSongsTable = '''
 CREATE TABLE songs (
@@ -74,7 +74,17 @@ Future<void> createDatabaseSchema(DatabaseExecutor database) async {
   for (final statement in createSchemaStatements) {
     await database.execute(statement);
   }
+  await upgradeDatabaseSchema(database, 1, databaseVersion);
 }
+
+// V2: solo las listas creadas por Player participan del índice UNIQUE.
+// Las colecciones v1 de otros módulos conservan sus nombres y referencias.
+const playerPlaylistMigration = [
+  'ALTER TABLE playlists ADD COLUMN player_managed INTEGER NOT NULL DEFAULT 0 CHECK (player_managed IN (0, 1))',
+  'ALTER TABLE playlists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1))',
+  '''CREATE UNIQUE INDEX idx_player_playlist_name
+     ON playlists(trim(name) COLLATE NOCASE) WHERE player_managed = 1''',
+];
 
 Future<void> upgradeDatabaseSchema(
   DatabaseExecutor database,
@@ -82,6 +92,13 @@ Future<void> upgradeDatabaseSchema(
   int newVersion,
 ) async {
   if (oldVersion < 1 && newVersion >= 1) {
-    await createDatabaseSchema(database);
+    for (final statement in createSchemaStatements) {
+      await database.execute(statement);
+    }
+  }
+  if (oldVersion < 2 && newVersion >= 2) {
+    for (final statement in playerPlaylistMigration) {
+      await database.execute(statement);
+    }
   }
 }
