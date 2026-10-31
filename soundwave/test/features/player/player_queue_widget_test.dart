@@ -91,6 +91,102 @@ Future<void> showPlayer(
 }
 
 void main() {
+  void tallScreen(WidgetTester tester) {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+  }
+
+  List<String> visibleQueueIds(WidgetTester tester) => tester
+      .widgetList<Dismissible>(
+        find.descendant(
+          of: find.byType(PlayerQueueView),
+          matching: find.byType(Dismissible),
+        ),
+      )
+      .map((row) => (row.key! as ValueKey<String>).value)
+      .toList();
+
+  testWidgets('la cola sigue Siguiente, Anterior y la vuelta al inicio', (
+    tester,
+  ) async {
+    tallScreen(tester);
+    await showPlayer(tester, ControlledQueueRepository());
+    expect(visibleQueueIds(tester), ['p1', 'p2', 'p3']);
+    expect(
+      tester
+          .widget<ListTile>(
+            find.descendant(
+              of: find.byKey(const ValueKey('p1')),
+              matching: find.byType(ListTile),
+            ),
+          )
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.byTooltip('Siguiente'));
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p2', 'p3', 'p1']);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('p2')),
+        matching: find.text('En reproducción · SoundWave Mock'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Anterior'));
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p1', 'p2', 'p3']);
+    await tester.tap(find.byTooltip('Anterior'));
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p3', 'p1', 'p2']);
+  });
+
+  testWidgets('el avance automático actualiza la cola', (tester) async {
+    tallScreen(tester);
+    await showPlayer(tester, ControlledQueueRepository());
+    tester.widget<Slider>(find.byType(Slider)).onChanged!(180);
+    await tester.pump();
+    await tester.tap(find.byTooltip('Reproducir'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.byTooltip('Pausar'));
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p2', 'p3', 'p1']);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('p2')),
+        matching: find.text('En reproducción · SoundWave Mock'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('filtrar no altera reproducción y bloquear actualiza la cola', (
+    tester,
+  ) async {
+    tallScreen(tester);
+    final repository = ControlledQueueRepository();
+    await showPlayer(tester, repository);
+    await tester.enterText(find.byType(TextFormField), 'viaje');
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p2']);
+    expect(find.text('En reproducción · SoundWave Mock'), findsNothing);
+    await tester.tap(find.byTooltip('Siguiente'));
+    await tester.pumpAndSettle();
+    expect(find.text('En reproducción · SoundWave Mock'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField), '');
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p2', 'p3', 'p1']);
+    await tester.tap(find.text('Bloquear canción'));
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p3', 'p1']);
+    await tester.tap(find.text('Deshacer'));
+    await tester.pumpAndSettle();
+    expect(visibleQueueIds(tester), ['p2', 'p3', 'p1']);
+    expect(await repository.list(const PlayerQueueFilter()), hasLength(3));
+  });
+
   testWidgets('el aviso de bloqueo desaparece después de cinco segundos', (
     tester,
   ) async {

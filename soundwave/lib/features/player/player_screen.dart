@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data/player_queue_repository.dart';
 import 'player_cover_local.dart';
 import 'player_queue_view.dart';
+import 'player_playlists_screen.dart';
 import 'player_store.dart';
 import 'player_theme_local.dart';
 import 'providers/player_download_provider.dart';
@@ -59,6 +60,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final m = total ~/ 60;
     final s = total % 60;
     return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  Widget _playlistsButton() => IconButton(
+    icon: const Icon(Icons.queue_music),
+    tooltip: 'Listas de reproducción',
+    onPressed: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PlayerPlaylistsScreen()),
+    ),
+  );
+
+  Widget _queueView() {
+    final ids = store.playableSongs.map((song) => song.id).toList();
+    final currentId = store.currentSong?.id;
+    final index = ids.indexOf(currentId ?? '');
+    // La cola es circular, igual que Siguiente y Anterior del reproductor.
+    final order = index < 0
+        ? <String>[]
+        : [...ids.skip(index), ...ids.take(index)];
+    return PlayerQueueView(
+      key: _queueKey,
+      currentSongId: currentId,
+      playbackOrder: order,
+    );
   }
 
   void _blockCurrent() {
@@ -139,7 +163,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             'No hay canciones disponibles para reproducir.',
                           ),
                           const SizedBox(height: PlayerThemeLocal.space24),
-                          PlayerQueueView(key: _queueKey),
+                          _queueView(),
+                          _playlistsButton(),
                         ],
                       );
                     }
@@ -151,9 +176,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         PlayerThemeLocal.space32,
                       ),
                       children: [
-                        const Text(
-                          'Reproductor offline',
-                          style: PlayerThemeLocal.screenTitle,
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Reproductor offline',
+                                style: PlayerThemeLocal.screenTitle,
+                              ),
+                            ),
+                            _playlistsButton(),
+                          ],
                         ),
                         const SizedBox(height: PlayerThemeLocal.space4),
                         const Row(
@@ -316,7 +348,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: PlayerThemeLocal.space24),
-                        PlayerQueueView(key: _queueKey),
+                        _queueView(),
                       ],
                     );
                   },
