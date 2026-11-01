@@ -64,32 +64,6 @@ CREATE TABLE blocked_songs (
   'CREATE INDEX idx_downloads_state ON downloads(state)',
 ];
 
-/// Schema that version 2 phones already have: song license metadata and users.
-const _version2Statements = [
-  ..._version1Statements,
-  'ALTER TABLE songs ADD COLUMN license TEXT',
-  'ALTER TABLE songs ADD COLUMN license_url TEXT',
-  'ALTER TABLE songs ADD COLUMN attribution TEXT',
-  'ALTER TABLE songs ADD COLUMN source_url TEXT',
-  '''
-CREATE TABLE users (
- id TEXT PRIMARY KEY,
- username TEXT NOT NULL COLLATE NOCASE UNIQUE,
- display_name TEXT,
- password_hash TEXT NOT NULL
-)
-''',
-];
-
-/// Shape of a build that shipped the playlist change as version 2 before the
-/// version was moved to 3, so upgrading must not add the column twice.
-const _version2WithPlaylistsStatements = [
-  ..._version2Statements,
-  'ALTER TABLE playlists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0',
-  'CREATE UNIQUE INDEX idx_playlists_name_unique '
-      'ON playlists(name COLLATE NOCASE)',
-];
-
 void main() {
   late Directory directory;
   late String databasePath;
@@ -103,34 +77,37 @@ void main() {
 
   tearDown(() => directory.delete(recursive: true));
 
-  Future<Database> openLegacy(int version, List<String> statements) =>
+  Future<Database> openLegacy(String createSql) =>
       databaseFactoryFfi.openDatabase(
         databasePath,
         options: OpenDatabaseOptions(
-          version: version,
+          version: 1,
           singleInstance: false,
           onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
-          onCreate: (db, _) async {
-            for (final statement in statements) {
-              await db.execute(statement);
-            }
-          },
+          onCreate: (db, _) => db.execute(createSql),
         ),
       );
 
-  Future<Database> openVersion1() => openLegacy(1, _version1Statements);
+  Future<Database> openVersion1() async {
+    final database = await openLegacy('SELECT 1');
+    for (final statement in _version1Statements) {
+      await database.execute(statement);
+    }
+    return database;
+  }
 
   Future<Database> openCurrent() => databaseFactoryFfi.openDatabase(
     databasePath,
     options: OpenDatabaseOptions(
       version: databaseVersion,
+      singleInstance: false,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) => createDatabaseSchema(db),
       onUpgrade: upgradeDatabaseSchema,
     ),
   );
 
-  test('opening a v1 database with data keeps it and adds v3', () async {
+  test('opening a v1 database with data keeps it and adds v2', () async {
     final legacy = await openVersion1();
     await legacy.insert('songs', {
       'id': 'demo:blue-hour',
@@ -141,10 +118,7 @@ void main() {
       'duration_ms': 205000,
     });
     await legacy.insert('playlists', {'id': 'favoritas', 'name': 'Favoritas'});
-    await legacy.insert('playlists', {
-      'id': 'offline',
-      'name': 'Colección sin conexión',
-    });
+    await legacy.insert('playlists', {'id': 'offline', 'name': 'Favoritas'});
     await legacy.insert('playlist_songs', {
       'playlist_id': 'favoritas',
       'song_id': 'demo:blue-hour',
@@ -155,13 +129,13 @@ void main() {
     final upgraded = await openCurrent();
     addTearDown(upgraded.close);
 
-    final playlists = await upgraded.query('playlists', orderBy: 'name');
+    final playlists = await upgraded.query('playlists', orderBy: 'rowid');
     expect(playlists, hasLength(2));
-    expect(
-      playlists.map((row) => row['name']),
-      containsAll(['Colección sin conexión', 'Favoritas']),
-    );
+    // The upgrade never renames or deletes lists the user already had, even
+    // when they share a name.
+    expect(playlists.map((row) => row['name']), everyElement('Favoritas'));
     expect(playlists.every((row) => row['archived'] == 0), isTrue);
+    expect(playlists.every((row) => row['player_managed'] == 0), isTrue);
     expect(
       await upgraded.query(
         'playlist_songs',
@@ -172,106 +146,48 @@ void main() {
     );
     expect((await upgraded.query('songs')).single['title'], 'Blue Hour');
 
-    final indexes = await upgraded.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
-      ['idx_playlists_name_unique'],
-    );
-    expect(indexes, hasLength(1));
-
-    await upgraded.update(
-      'playlists',
-      {'archived': 1},
-      where: 'id = ?',
-      whereArgs: ['offline'],
-    );
-    expect(
-      (await upgraded.query(
-        'playlists',
-        where: 'id = ?',
-        whereArgs: ['offline'],
-      )).single['archived'],
-      1,
-    );
-
-    await expectLater(
-      upgraded.insert('playlists', {'id': 'other', 'name': 'favoritas'}),
-      throwsA(isA<DatabaseException>()),
-    );
-  });
-
-  test('upgrading renames duplicate names instead of deleting lists', () async {
-    final legacy = await openVersion1();
-    await legacy.insert('playlists', {'id': 'a', 'name': 'Road trip'});
-    await legacy.insert('playlists', {'id': 'b', 'name': 'road trip'});
-    await legacy.insert('playlists', {'id': 'c', 'name': 'Road trip (2)'});
-    await legacy.close();
-
-    final upgraded = await openCurrent();
-    addTearDown(upgraded.close);
-
-    final rows = await upgraded.query('playlists', orderBy: 'rowid');
-    final names = rows.map((row) => row['name']! as String).toList();
-    expect(rows.map((row) => row['id']), containsAll(['a', 'b', 'c']));
-    expect(names, hasLength(3));
-    expect(names.map((name) => name.toLowerCase()).toSet(), hasLength(3));
-    expect(names.first, 'Road trip');
-  });
-
-  test('upgrading v2 keeps license columns and users intact', () async {
-    final legacy = await openLegacy(2, _version2Statements);
-    await legacy.insert('users', {
-      'id': 'user-1',
-      'username': 'Henry',
-      'password_hash': 'hash',
-    });
-    await legacy.insert('playlists', {'id': 'a', 'name': 'Road trip'});
-    await legacy.insert('playlists', {'id': 'b', 'name': 'road trip'});
-    await legacy.close();
-
-    final upgraded = await openCurrent();
-    addTearDown(upgraded.close);
-
     final songColumns = await upgraded.rawQuery('PRAGMA table_info(songs)');
     expect(
       songColumns.map((row) => row['name']),
       containsAll(['license', 'license_url', 'attribution', 'source_url']),
     );
-    expect(
-      (await upgraded.query(
-        'users',
-        where: 'id = ?',
-        whereArgs: ['user-1'],
-      )).single['username'],
-      'Henry',
+    final tables = await upgraded.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'",
     );
+    expect(tables, hasLength(1));
 
-    final names = (await upgraded.query(
-      'playlists',
-      orderBy: 'rowid',
-    )).map((row) => row['name']! as String).toList();
-    expect(names, hasLength(2));
-    expect(names.map((name) => name.toLowerCase()).toSet(), hasLength(2));
+    final indexes = await upgraded.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+      ['idx_player_playlist_name'],
+    );
+    expect(indexes, hasLength(1));
   });
 
-  test('upgrading a v2 that already has archived does not fail', () async {
-    final legacy = await openLegacy(2, _version2WithPlaylistsStatements);
-    await legacy.insert('playlists', {
-      'id': 'a',
-      'name': 'Road trip',
-      'archived': 1,
+  test('the name index only covers lists managed by the player', () async {
+    final database = await openCurrent();
+    addTearDown(database.close);
+
+    // Lists created outside the player keep the duplicates they always had.
+    await database.insert('playlists', {'id': 'a', 'name': 'Road trip'});
+    await database.insert('playlists', {'id': 'b', 'name': 'road trip'});
+    expect(await database.query('playlists'), hasLength(2));
+
+    await database.insert('playlists', {
+      'id': 'p1',
+      'name': 'Viaje',
+      'player_managed': 1,
     });
-    await legacy.close();
-
-    final upgraded = await openCurrent();
-    addTearDown(upgraded.close);
-
-    expect((await upgraded.query('playlists')).single['archived'], 1);
-    expect(
-      await upgraded.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
-        ['idx_playlists_name_unique'],
-      ),
-      hasLength(1),
+    await expectLater(
+      database.insert('playlists', {
+        'id': 'p2',
+        'name': ' viaje ',
+        'player_managed': 1,
+      }),
+      throwsA(isA<DatabaseException>()),
     );
+
+    // The player names stay usable by the other collections.
+    await database.insert('playlists', {'id': 'c', 'name': 'viaje'});
+    expect(await database.query('playlists'), hasLength(4));
   });
 }
