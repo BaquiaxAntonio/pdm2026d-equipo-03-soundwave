@@ -32,7 +32,7 @@ class CatalogSearchOutcome {
   final CatalogResultOrigin origin;
   final CatalogFallbackReason? fallbackReason;
 
-  /// Legal metadata is available for online results but is not persisted yet.
+  /// Provider-specific metadata retained for download and license decisions.
   final List<CommonsCatalogItem> providerItems;
 }
 
