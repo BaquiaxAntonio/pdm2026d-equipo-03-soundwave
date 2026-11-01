@@ -12,6 +12,10 @@ CREATE TABLE songs (
   artist TEXT NOT NULL,
   duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
   artwork_url TEXT,
+  license TEXT,
+  license_url TEXT,
+  attribution TEXT,
+  source_url TEXT,
   UNIQUE (provider, source_id)
 )
 ''';
@@ -59,12 +63,22 @@ CREATE TABLE blocked_songs (
 )
 ''';
 
+const createUsersTable = '''
+CREATE TABLE users (
+ id TEXT PRIMARY KEY,
+ username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+ display_name TEXT,
+ password_hash TEXT NOT NULL
+)
+''';
+
 const createSchemaStatements = [
   createSongsTable,
   createDownloadsTable,
   createPlaylistsTable,
   createPlaylistSongsTable,
   createBlockedSongsTable,
+  createUsersTable,
   'CREATE INDEX idx_songs_title ON songs(title COLLATE NOCASE)',
   'CREATE INDEX idx_songs_artist ON songs(artist COLLATE NOCASE)',
   'CREATE INDEX idx_downloads_state ON downloads(state)',
@@ -86,6 +100,7 @@ const playerPlaylistMigration = [
      ON playlists(trim(name) COLLATE NOCASE) WHERE player_managed = 1''',
 ];
 
+
 Future<void> upgradeDatabaseSchema(
   DatabaseExecutor database,
   int oldVersion,
@@ -95,10 +110,18 @@ Future<void> upgradeDatabaseSchema(
     for (final statement in createSchemaStatements) {
       await database.execute(statement);
     }
+  } else if (oldVersion < 2 && newVersion >= 2) {
+    await database.execute('ALTER TABLE songs ADD COLUMN license TEXT');
+    await database.execute('ALTER TABLE songs ADD COLUMN license_url TEXT');
+    await database.execute('ALTER TABLE songs ADD COLUMN attribution TEXT');
+    await database.execute('ALTER TABLE songs ADD COLUMN source_url TEXT');
+    await database.execute(createUsersTable);
   }
+
   if (oldVersion < 2 && newVersion >= 2) {
     for (final statement in playerPlaylistMigration) {
       await database.execute(statement);
     }
   }
 }
+
