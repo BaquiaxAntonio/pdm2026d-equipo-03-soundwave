@@ -25,3 +25,18 @@
 - Se rechazó acoplar el filtro a `SearchScreen`, porque la lista de descargas
   ya usa el repositorio y el estado asíncrono que requiere el laboratorio.
 - No se rechazaron otras sugerencias de IA.
+
+## Laboratorio 16: migración v2 de listas
+
+- Se subió `databaseVersion` a 2 con la columna `archived` en `playlists` y un
+  índice único de nombre sin distinguir mayúsculas, aplicado únicamente en
+  `onUpgrade`.
+- La migración v1 quedó intacta y, si el teléfono ya tenía nombres repetidos,
+  los renombra con sufijos en lugar de borrar listas: crear el índice único
+  habría fallado y la app no habría vuelto a abrir.
+- La IA propuso editar `createPlaylistsTable` y reemplazar la v1; se rechazó
+  porque los teléfonos que ya migraron no vuelven a ejecutar ese paso. El
+  esquema v1 quedó congelado dentro de la prueba, no en producción.
+- La prueba abre una base v1 con canciones, listas y membresías, la actualiza
+  a v2 y comprueba que los datos siguen, que `archived` existe y que el índice
+  rechaza nombres repetidos.

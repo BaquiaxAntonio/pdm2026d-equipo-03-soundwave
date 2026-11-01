@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 const databaseName = 'soundwave.db';
-const databaseVersion = 1;
+const databaseVersion = 2;
 
 const createSongsTable = '''
 CREATE TABLE songs (
@@ -34,9 +34,14 @@ CREATE TABLE downloads (
 const createPlaylistsTable = '''
 CREATE TABLE playlists (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL
+  name TEXT NOT NULL,
+  archived INTEGER NOT NULL DEFAULT 0
 )
 ''';
+
+const createPlaylistNameIndex =
+    'CREATE UNIQUE INDEX idx_playlists_name_unique '
+    'ON playlists(name COLLATE NOCASE)';
 
 const createPlaylistSongsTable = '''
 CREATE TABLE playlist_songs (
@@ -65,6 +70,7 @@ const createSchemaStatements = [
   createPlaylistsTable,
   createPlaylistSongsTable,
   createBlockedSongsTable,
+  createPlaylistNameIndex,
   'CREATE INDEX idx_songs_title ON songs(title COLLATE NOCASE)',
   'CREATE INDEX idx_songs_artist ON songs(artist COLLATE NOCASE)',
   'CREATE INDEX idx_downloads_state ON downloads(state)',
@@ -76,12 +82,59 @@ Future<void> createDatabaseSchema(DatabaseExecutor database) async {
   }
 }
 
+/// Applies only steps that an already installed database has not run yet.
+/// Never rewrite a released step: a phone that already upgraded will not run
+/// it again and its schema would silently diverge.
 Future<void> upgradeDatabaseSchema(
   DatabaseExecutor database,
   int oldVersion,
   int newVersion,
 ) async {
-  if (oldVersion < 1 && newVersion >= 1) {
+  if (oldVersion < 1) {
+    // A brand new file is created with the current schema, never by replaying
+    // historical steps.
     await createDatabaseSchema(database);
+    return;
+  }
+  if (oldVersion < 2 && newVersion >= 2) {
+    await _upgradeToVersion2(database);
+  }
+}
+
+/// v2: playlists can be archived and their names are unique (case-insensitive).
+Future<void> _upgradeToVersion2(DatabaseExecutor database) async {
+  await database.execute(
+    'ALTER TABLE playlists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0',
+  );
+  // The unique index cannot be created while two lists share a name, so names
+  // already stored on the phone are suffixed instead of being deleted.
+  await _deduplicatePlaylistNames(database);
+  await database.execute(createPlaylistNameIndex);
+}
+
+Future<void> _deduplicatePlaylistNames(DatabaseExecutor database) async {
+  final rows = await database.query(
+    'playlists',
+    columns: ['id', 'name'],
+    orderBy: 'rowid',
+  );
+  final used = <String>{};
+  for (final row in rows) {
+    final id = row['id']! as String;
+    final name = row['name']! as String;
+    var candidate = name;
+    var suffix = 2;
+    while (!used.add(candidate.toLowerCase())) {
+      candidate = '$name ($suffix)';
+      suffix++;
+    }
+    if (candidate != name) {
+      await database.update(
+        'playlists',
+        {'name': candidate},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
   }
 }

@@ -97,7 +97,7 @@ void main() {
     );
   });
 
-  test('applies the v1 migration to an empty existing database', () async {
+  test('applies the current schema to an empty existing database', () async {
     final legacyDatabase = await databaseFactoryFfi.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
