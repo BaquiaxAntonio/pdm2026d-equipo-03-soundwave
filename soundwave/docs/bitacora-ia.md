@@ -217,3 +217,24 @@ cambio a los datos existentes sin tener que borrar la base.
   su configuración existente.
 - Análisis estático de `lib/` y `test/` usando la unidad temporal: sin observaciones.
 - `git diff --check`: sin errores de espacios.
+
+## Laboratorio 16: pruebas de regresión de la migración de listas
+
+- Al integrar `main` se vio que la versión 2 ya estaba publicada con las columnas
+  de licencia, la tabla `users` y la migración de listas del reproductor
+  (`player_managed`, `archived` y un índice UNIQUE parcial por nombre). Se
+  descartó enviar un paso 3 con un índice único global: habría renombrado listas
+  que el usuario ya tenía y habría chocado con la decisión del equipo de limitar
+  la unicidad a `player_managed = 1`.
+- Por eso esta rama ya no modifica el esquema; aporta una prueba de regresión
+  enfocada (`test/core/database/playlist_migration_test.dart`). Abre un archivo
+  v1 con canción, dos listas con el mismo nombre y una membresía, y comprueba
+  que la actualización conserva los datos, agrega `archived`, `player_managed`,
+  `users` y las columnas de licencia, y deja intactos los nombres repetidos.
+- La segunda prueba fija el alcance del índice: dos listas del reproductor no
+  pueden compartir nombre, pero una lista ajena al reproductor sí conserva el
+  que ya tenía.
+- Se rechazó borrar o renombrar listas para poder crear un índice único: una
+  migración nunca destruye datos del usuario.
+- Se rechazó duplicar la migración del reproductor: dos pasos que agregan la
+  misma columna romperían la actualización de los teléfonos que ya migraron.
