@@ -64,6 +64,32 @@ CREATE TABLE blocked_songs (
   'CREATE INDEX idx_downloads_state ON downloads(state)',
 ];
 
+/// Schema that version 2 phones already have: song license metadata and users.
+const _version2Statements = [
+  ..._version1Statements,
+  'ALTER TABLE songs ADD COLUMN license TEXT',
+  'ALTER TABLE songs ADD COLUMN license_url TEXT',
+  'ALTER TABLE songs ADD COLUMN attribution TEXT',
+  'ALTER TABLE songs ADD COLUMN source_url TEXT',
+  '''
+CREATE TABLE users (
+ id TEXT PRIMARY KEY,
+ username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+ display_name TEXT,
+ password_hash TEXT NOT NULL
+)
+''',
+];
+
+/// Shape of a build that shipped the playlist change as version 2 before the
+/// version was moved to 3, so upgrading must not add the column twice.
+const _version2WithPlaylistsStatements = [
+  ..._version2Statements,
+  'ALTER TABLE playlists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0',
+  'CREATE UNIQUE INDEX idx_playlists_name_unique '
+      'ON playlists(name COLLATE NOCASE)',
+];
+
 void main() {
   late Directory directory;
   late String databasePath;
@@ -77,18 +103,22 @@ void main() {
 
   tearDown(() => directory.delete(recursive: true));
 
-  Future<Database> openVersion1() => databaseFactoryFfi.openDatabase(
-    databasePath,
-    options: OpenDatabaseOptions(
-      version: 1,
-      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
-      onCreate: (db, _) async {
-        for (final statement in _version1Statements) {
-          await db.execute(statement);
-        }
-      },
-    ),
-  );
+  Future<Database> openLegacy(int version, List<String> statements) =>
+      databaseFactoryFfi.openDatabase(
+        databasePath,
+        options: OpenDatabaseOptions(
+          version: version,
+          singleInstance: false,
+          onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+          onCreate: (db, _) async {
+            for (final statement in statements) {
+              await db.execute(statement);
+            }
+          },
+        ),
+      );
+
+  Future<Database> openVersion1() => openLegacy(1, _version1Statements);
 
   Future<Database> openCurrent() => databaseFactoryFfi.openDatabase(
     databasePath,
@@ -100,7 +130,7 @@ void main() {
     ),
   );
 
-  test('opening a v1 database with data keeps it and adds v2', () async {
+  test('opening a v1 database with data keeps it and adds v3', () async {
     final legacy = await openVersion1();
     await legacy.insert('songs', {
       'id': 'demo:blue-hour',
@@ -185,5 +215,63 @@ void main() {
     expect(names, hasLength(3));
     expect(names.map((name) => name.toLowerCase()).toSet(), hasLength(3));
     expect(names.first, 'Road trip');
+  });
+
+  test('upgrading v2 keeps license columns and users intact', () async {
+    final legacy = await openLegacy(2, _version2Statements);
+    await legacy.insert('users', {
+      'id': 'user-1',
+      'username': 'Henry',
+      'password_hash': 'hash',
+    });
+    await legacy.insert('playlists', {'id': 'a', 'name': 'Road trip'});
+    await legacy.insert('playlists', {'id': 'b', 'name': 'road trip'});
+    await legacy.close();
+
+    final upgraded = await openCurrent();
+    addTearDown(upgraded.close);
+
+    final songColumns = await upgraded.rawQuery('PRAGMA table_info(songs)');
+    expect(
+      songColumns.map((row) => row['name']),
+      containsAll(['license', 'license_url', 'attribution', 'source_url']),
+    );
+    expect(
+      (await upgraded.query(
+        'users',
+        where: 'id = ?',
+        whereArgs: ['user-1'],
+      )).single['username'],
+      'Henry',
+    );
+
+    final names = (await upgraded.query(
+      'playlists',
+      orderBy: 'rowid',
+    )).map((row) => row['name']! as String).toList();
+    expect(names, hasLength(2));
+    expect(names.map((name) => name.toLowerCase()).toSet(), hasLength(2));
+  });
+
+  test('upgrading a v2 that already has archived does not fail', () async {
+    final legacy = await openLegacy(2, _version2WithPlaylistsStatements);
+    await legacy.insert('playlists', {
+      'id': 'a',
+      'name': 'Road trip',
+      'archived': 1,
+    });
+    await legacy.close();
+
+    final upgraded = await openCurrent();
+    addTearDown(upgraded.close);
+
+    expect((await upgraded.query('playlists')).single['archived'], 1);
+    expect(
+      await upgraded.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+        ['idx_playlists_name_unique'],
+      ),
+      hasLength(1),
+    );
   });
 }

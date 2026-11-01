@@ -8,19 +8,29 @@ final playerControllerProvider =
     );
 
 class PlayerControllerNotifier extends Notifier<PlayerState> {
+  LocalPlaybackController? _playback;
+
   @override
   PlayerState build() {
     ref.onDispose(() {
-      state = state.stop();
+      _playback?.dispose();
+      _playback = null;
     });
     return PlayerState.initial();
   }
 
-  LocalPlaybackController get _controller =>
-      state.controller ?? (LocalPlaybackController()..load(state.tracks));
+  LocalPlaybackController get _controller {
+    final existing = _playback;
+    if (existing != null) return existing;
+    final created = LocalPlaybackController()..load(state.tracks);
+    _playback = created;
+    return created;
+  }
 
   void load(List<PlayerTrack> tracks, {int startIndex = 0}) {
+    _playback?.dispose();
     final controller = LocalPlaybackController();
+    _playback = controller;
     final next = state.copyWith(
       tracks: tracks,
       index: startIndex.clamp(0, tracks.isEmpty ? 0 : tracks.length - 1),

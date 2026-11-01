@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 const databaseName = 'soundwave.db';
-const databaseVersion = 2;
+const databaseVersion = 3;
 
 const createSongsTable = '''
 CREATE TABLE songs (
@@ -12,6 +12,10 @@ CREATE TABLE songs (
   artist TEXT NOT NULL,
   duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
   artwork_url TEXT,
+  license TEXT,
+  license_url TEXT,
+  attribution TEXT,
+  source_url TEXT,
   UNIQUE (provider, source_id)
 )
 ''';
@@ -40,7 +44,7 @@ CREATE TABLE playlists (
 ''';
 
 const createPlaylistNameIndex =
-    'CREATE UNIQUE INDEX idx_playlists_name_unique '
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_playlists_name_unique '
     'ON playlists(name COLLATE NOCASE)';
 
 const createPlaylistSongsTable = '''
@@ -64,12 +68,22 @@ CREATE TABLE blocked_songs (
 )
 ''';
 
+const createUsersTable = '''
+CREATE TABLE users (
+ id TEXT PRIMARY KEY,
+ username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+ display_name TEXT,
+ password_hash TEXT NOT NULL
+)
+''';
+
 const createSchemaStatements = [
   createSongsTable,
   createDownloadsTable,
   createPlaylistsTable,
   createPlaylistSongsTable,
   createBlockedSongsTable,
+  createUsersTable,
   createPlaylistNameIndex,
   'CREATE INDEX idx_songs_title ON songs(title COLLATE NOCASE)',
   'CREATE INDEX idx_songs_artist ON songs(artist COLLATE NOCASE)',
@@ -99,17 +113,42 @@ Future<void> upgradeDatabaseSchema(
   if (oldVersion < 2 && newVersion >= 2) {
     await _upgradeToVersion2(database);
   }
+  if (oldVersion < 3 && newVersion >= 3) {
+    await _upgradeToVersion3(database);
+  }
 }
 
-/// v2: playlists can be archived and their names are unique (case-insensitive).
+/// v2: song license metadata and local users.
 Future<void> _upgradeToVersion2(DatabaseExecutor database) async {
-  await database.execute(
-    'ALTER TABLE playlists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0',
-  );
+  await database.execute('ALTER TABLE songs ADD COLUMN license TEXT');
+  await database.execute('ALTER TABLE songs ADD COLUMN license_url TEXT');
+  await database.execute('ALTER TABLE songs ADD COLUMN attribution TEXT');
+  await database.execute('ALTER TABLE songs ADD COLUMN source_url TEXT');
+  await database.execute(createUsersTable);
+}
+
+/// v3: playlists can be archived and their names are unique (case-insensitive).
+Future<void> _upgradeToVersion3(DatabaseExecutor database) async {
+  // A build of this branch shipped the playlist change as version 2, so the
+  // column is only added when it is still missing.
+  if (!await _hasColumn(database, 'playlists', 'archived')) {
+    await database.execute(
+      'ALTER TABLE playlists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0',
+    );
+  }
   // The unique index cannot be created while two lists share a name, so names
   // already stored on the phone are suffixed instead of being deleted.
   await _deduplicatePlaylistNames(database);
   await database.execute(createPlaylistNameIndex);
+}
+
+Future<bool> _hasColumn(
+  DatabaseExecutor database,
+  String table,
+  String column,
+) async {
+  final columns = await database.rawQuery('PRAGMA table_info($table)');
+  return columns.any((row) => row['name'] == column);
 }
 
 Future<void> _deduplicatePlaylistNames(DatabaseExecutor database) async {

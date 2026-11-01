@@ -11,6 +11,10 @@ class Song {
     required this.sourceId,
     this.durationMs,
     this.artworkUrl,
+    this.license,
+    this.licenseUrl,
+    this.attribution,
+    this.sourceUrl,
   }) : assert(id != ''),
        assert(title != ''),
        assert(artist != ''),
@@ -25,6 +29,10 @@ class Song {
   final String provider;
   final String sourceId;
   final Uri? artworkUrl;
+  final String? license;
+  final String? licenseUrl;
+  final String? attribution;
+  final String? sourceUrl;
 
   String get formattedDuration {
     final milliseconds = durationMs;
@@ -41,6 +49,10 @@ class Song {
     'provider': provider,
     'source_id': sourceId,
     'artwork_url': artworkUrl?.toString(),
+    'license': license,
+    'license_url': licenseUrl,
+    'attribution': attribution,
+    'source_url': sourceUrl,
   };
 
   factory Song.fromMap(Map<String, Object?> map) => Song(
@@ -53,5 +65,9 @@ class Song {
     artworkUrl: map['artwork_url'] == null
         ? null
         : Uri.tryParse(map['artwork_url']! as String),
+    license: map['license'] as String?,
+    licenseUrl: map['license_url'] as String?,
+    attribution: map['attribution'] as String?,
+    sourceUrl: map['source_url'] as String?,
   );
 }
