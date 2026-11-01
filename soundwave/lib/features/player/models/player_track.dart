@@ -11,7 +11,9 @@ class PlayerTrack {
     if (download.songId != song.id ||
         download.state != DownloadState.completed ||
         download.localPath == null) {
-      throw ArgumentError('Playback requires a completed download with a path.');
+      throw ArgumentError(
+        'Playback requires a completed download with a path.',
+      );
     }
     return PlayerTrack(song: song, localPath: download.localPath);
   }

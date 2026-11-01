@@ -100,10 +100,19 @@ CommonsCatalogItem? _parsePage(Object? value) {
       durationMs: _durationMs(imageInfo['duration']),
       provider: commonsProviderId,
       sourceId: sourceId,
-      license: _nonEmptyString(_metadataString(extendedMetadata, 'LicenseShortName')),
-      licenseUrl: _absoluteUri(_metadataString(extendedMetadata, 'LicenseUrl'))?.toString(),
+      license: _nonEmptyString(
+        _metadataString(extendedMetadata, 'LicenseShortName'),
+      ),
+      licenseUrl: _absoluteUri(
+        _metadataString(extendedMetadata, 'LicenseUrl'),
+      )?.toString(),
       attribution: creditText == null || creditText.isEmpty ? null : creditText,
-      sourceUrl: (descriptionUrl ?? Uri.https('commons.wikimedia.org', '/w/index.php', {'curid': sourceId})).toString(),
+      sourceUrl:
+          (descriptionUrl ??
+                  Uri.https('commons.wikimedia.org', '/w/index.php', {
+                    'curid': sourceId,
+                  }))
+              .toString(),
     ),
     sourcePageUrl:
         descriptionUrl ??

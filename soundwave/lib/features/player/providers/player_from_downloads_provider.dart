@@ -16,9 +16,7 @@ final playerFromDownloadsProvider = Provider<void>((ref) {
         if (entry.record.state == DownloadState.completed &&
             entry.record.localPath != null &&
             entry.song != null) {
-          tracks.add(
-            PlayerTrack.fromDownload(entry.song!, entry.record),
-          );
+          tracks.add(PlayerTrack.fromDownload(entry.song!, entry.record));
         }
       }
       ref.read(playerControllerProvider.notifier).load(tracks);
