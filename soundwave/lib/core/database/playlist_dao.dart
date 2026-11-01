@@ -10,6 +10,17 @@ class PlaylistDao {
   Future<void> create({required String id, required String name}) =>
       database.insert('playlists', {'id': id, 'name': name});
 
+  /// Whether a list already uses [name], ignoring case and leaving [exceptId]
+  /// out so a list can keep its own name while it is edited.
+  Future<bool> nameExists(String name, {String? exceptId}) async {
+    final rows = await database.rawQuery(
+      'SELECT 1 FROM playlists '
+      'WHERE name = ? COLLATE NOCASE AND id <> ? LIMIT 1',
+      [name, exceptId ?? ''],
+    );
+    return rows.isNotEmpty;
+  }
+
   /// Active and archived playlists with their song count, ordered by state and
   /// name so the UI shows active lists first.
   Future<List<PlaylistEntry>> entries() async {

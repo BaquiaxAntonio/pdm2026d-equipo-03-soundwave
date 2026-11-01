@@ -27,7 +27,11 @@ class SqlitePlaylistRepository implements PlaylistRepository {
     final normalized = _validName(name);
     final id = _newId();
     try {
-      await _playlists.create(id: id, name: normalized);
+      await database.transaction((transaction) async {
+        final playlists = PlaylistDao(transaction);
+        if (await playlists.nameExists(normalized)) throw _duplicate;
+        await playlists.create(id: id, name: normalized);
+      });
     } on DatabaseException catch (error) {
       throw _translate(error);
     }
@@ -39,8 +43,14 @@ class SqlitePlaylistRepository implements PlaylistRepository {
   Future<void> rename({required String id, required String name}) async {
     final normalized = _validName(name);
     try {
-      final updated = await _playlists.rename(id: id, name: normalized);
-      if (updated == 0) throw _notFound;
+      await database.transaction((transaction) async {
+        final playlists = PlaylistDao(transaction);
+        if (await playlists.nameExists(normalized, exceptId: id)) {
+          throw _duplicate;
+        }
+        final updated = await playlists.rename(id: id, name: normalized);
+        if (updated == 0) throw _notFound;
+      });
     } on DatabaseException catch (error) {
       throw _translate(error);
     }
@@ -78,10 +88,7 @@ class SqlitePlaylistRepository implements PlaylistRepository {
 
   RepositoryException _translate(DatabaseException error) {
     if (error.isUniqueConstraintError()) {
-      return const RepositoryException(
-        RepositoryErrorCode.duplicateName,
-        'Ya existe una lista con ese nombre. Elige otro.',
-      );
+      return _duplicate;
     }
     return RepositoryException(
       RepositoryErrorCode.storage,
@@ -89,6 +96,13 @@ class SqlitePlaylistRepository implements PlaylistRepository {
       cause: error,
     );
   }
+
+  /// The database only enforces unique names for the lists owned by the
+  /// player, so the check below covers every list shown in the Listas tab.
+  static const _duplicate = RepositoryException(
+    RepositoryErrorCode.duplicateName,
+    'Ya existe una lista con ese nombre. Elige otro.',
+  );
 
   static const _notFound = RepositoryException(
     RepositoryErrorCode.notFound,

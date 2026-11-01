@@ -5,7 +5,10 @@ import 'data/player_queue_repository.dart';
 import 'providers/player_queue_provider.dart';
 
 class PlayerQueueView extends ConsumerStatefulWidget {
-  const PlayerQueueView({super.key});
+  const PlayerQueueView({super.key, this.currentSongId, this.playbackOrder});
+
+  final String? currentSongId;
+  final List<String>? playbackOrder;
 
   @override
   ConsumerState<PlayerQueueView> createState() => _PlayerQueueViewState();
@@ -101,9 +104,23 @@ class _PlayerQueueViewState extends ConsumerState<PlayerQueueView> {
             ],
           ),
           data: (entries) {
+            final order = widget.playbackOrder;
+            final positions = order == null
+                ? null
+                : {for (var i = 0; i < order.length; i++) order[i]: i};
             final visible = entries
-                .where((e) => !_removedIds.contains(e.song.id))
+                .where(
+                  (e) =>
+                      !_removedIds.contains(e.song.id) &&
+                      (positions == null || positions.containsKey(e.song.id)),
+                )
                 .toList();
+            if (positions != null) {
+              visible.sort(
+                (a, b) =>
+                    positions[a.song.id]!.compareTo(positions[b.song.id]!),
+              );
+            }
             if (visible.isEmpty) {
               return Text(
                 ref.watch(playerQueueFilterProvider).text.trim().isEmpty
@@ -126,8 +143,13 @@ class _PlayerQueueViewState extends ConsumerState<PlayerQueueView> {
                       child: const Icon(Icons.delete, color: Colors.white),
                     ),
                     child: ListTile(
+                      selected: entry.song.id == widget.currentSongId,
                       title: Text(entry.song.title),
-                      subtitle: Text(entry.song.artist),
+                      subtitle: Text(
+                        entry.song.id == widget.currentSongId
+                            ? 'En reproducción · ${entry.song.artist}'
+                            : entry.song.artist,
+                      ),
                       trailing: Text(
                         '${entry.song.durationSeconds ~/ 60}:${(entry.song.durationSeconds % 60).toString().padLeft(2, '0')}',
                       ),
