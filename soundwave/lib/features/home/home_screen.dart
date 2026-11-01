@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_theme.dart';
 import '../../app/navigation_provider.dart';
+import '../../app/song_selection.dart';
 import '../../core/models/song.dart';
+import '../../core/providers/data_mode_provider.dart';
 import 'home_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -23,7 +25,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           data: (songs) {
             if (songs.isEmpty) {
-              return const _EmptyState();
+              return _EmptyState(onExplore: () => _openSearch(ref));
             }
             return _HomeContent(songs: songs);
           },
@@ -31,6 +33,9 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _openSearch(WidgetRef ref) =>
+      ref.read(activeTabProvider.notifier).select(AppTab.search);
 
   PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
     return AppBar(
@@ -42,8 +47,7 @@ class HomeScreen extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.search_rounded),
-          onPressed: () =>
-              ref.read(activeTabProvider.notifier).select(AppTab.search),
+          onPressed: () => _openSearch(ref),
           tooltip: 'Buscar',
         ),
         const SizedBox(width: AppSpacing.s8),
@@ -64,7 +68,7 @@ class _LoadingState extends StatelessWidget {
           const CircularProgressIndicator(),
           const SizedBox(height: AppSpacing.s16),
           Text(
-            'Cargando catálogo...',
+            'Cargando tu biblioteca...',
             style: AppTextStyles.bodySecondary.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -120,7 +124,9 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final VoidCallback onExplore;
+
+  const _EmptyState({required this.onExplore});
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +139,7 @@ class _EmptyState extends StatelessWidget {
             Icon(Icons.music_off, size: 64, color: AppColors.textSecondary),
             const SizedBox(height: AppSpacing.s16),
             Text(
-              'Aún no hay datos.',
+              'Tu biblioteca está vacía.',
               style: AppTextStyles.sectionTitle.copyWith(
                 color: AppColors.textPrimary,
               ),
@@ -141,17 +147,18 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s8),
             Text(
-              'No se encontraron canciones en el catálogo.',
+              'Busca una canción y descárgala para verla aquí y escucharla sin '
+              'conexión.',
               style: AppTextStyles.bodySecondary.copyWith(
                 color: AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.s24),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add),
-              label: const Text('Agregar'),
+            FilledButton.icon(
+              onPressed: onExplore,
+              icon: const Icon(Icons.search),
+              label: const Text('Buscar música'),
             ),
           ],
         ),
@@ -170,99 +177,86 @@ class _HomeContent extends ConsumerWidget {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 800;
     final isTablet = width >= 600 && width < 800;
+    final crossAxisCount = isDesktop
+        ? 4
+        : isTablet
+        ? 3
+        : 2;
 
-    final recent = songs.take(6).toList();
-    final favorites = songs.skip(6).take(6).toList();
-    final recommended = songs.skip(12).take(6).toList();
-    final topArtists = songs.skip(18).take(4).toList();
+    final recent = songs.take(6).toList(growable: false);
+    final favorites = songs.skip(6).take(6).toList(growable: false);
+    final recommended = songs.skip(12).take(6).toList(growable: false);
+    final topArtists = songs.skip(18).take(4).toList(growable: false);
+
+    void openSong(Song song) => openSongInPlayer(ref, song.id);
+    void openSearch() =>
+        ref.read(activeTabProvider.notifier).select(AppTab.search);
+
+    final sections = <Widget>[
+      if (recent.isNotEmpty) ...[
+        _SectionHeader(title: 'Recientes', onSeeAll: openSearch),
+        const SizedBox(height: AppSpacing.s12),
+        _ResponsiveSongGrid(
+          songs: recent,
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: 0.7,
+          onTapSong: openSong,
+        ),
+        const SizedBox(height: AppSpacing.s32),
+      ],
+      if (favorites.isNotEmpty) ...[
+        _SectionHeader(title: 'Favoritos', onSeeAll: openSearch),
+        const SizedBox(height: AppSpacing.s12),
+        _ResponsiveSongGrid(
+          songs: favorites,
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: 0.7,
+          onTapSong: openSong,
+        ),
+        const SizedBox(height: AppSpacing.s32),
+      ],
+      if (recommended.isNotEmpty) ...[
+        _SectionHeader(title: 'Recomendados para ti', onSeeAll: openSearch),
+        const SizedBox(height: AppSpacing.s12),
+        _ResponsiveSongGrid(
+          songs: recommended,
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: 0.7,
+          onTapSong: openSong,
+        ),
+        const SizedBox(height: AppSpacing.s32),
+      ],
+      if (topArtists.isNotEmpty) ...[
+        _SectionHeader(title: 'Artistas principales', onSeeAll: openSearch),
+        const SizedBox(height: AppSpacing.s12),
+        _ArtistGrid(
+          songs: topArtists,
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: 0.65,
+          onTapSong: openSong,
+        ),
+        const SizedBox(height: AppSpacing.s32),
+      ],
+    ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         return CustomScrollView(
           slivers: [
             _HeroSection(
-              recentSong: recent.isNotEmpty ? recent.first : null,
-              onPlayRecent: () {},
+              recentSong: recent.isEmpty ? null : recent.first,
+              isDemo: ref.watch(dataModeProvider) == DataMode.demo,
+              onPlayRecent: recent.isEmpty
+                  ? openSearch
+                  : () => openSong(recent.first),
+              onExplore: openSearch,
             ),
             SliverPadding(
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacing.horizontalMargin(context),
                 vertical: AppSpacing.s16,
               ),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _SectionHeader(
-                    title: 'Recientes',
-                    onSeeAll: () => ref
-                        .read(activeTabProvider.notifier)
-                        .select(AppTab.search),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  _ResponsiveSongGrid(
-                    songs: recent,
-                    crossAxisCount: isDesktop
-                        ? 4
-                        : isTablet
-                        ? 3
-                        : 2,
-                    childAspectRatio: 0.7,
-                  ),
-                  const SizedBox(height: AppSpacing.s32),
-                  _SectionHeader(
-                    title: 'Favoritos',
-                    onSeeAll: () => ref
-                        .read(activeTabProvider.notifier)
-                        .select(AppTab.search),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  _ResponsiveSongGrid(
-                    songs: favorites,
-                    crossAxisCount: isDesktop
-                        ? 4
-                        : isTablet
-                        ? 3
-                        : 2,
-                    childAspectRatio: 0.7,
-                  ),
-                  const SizedBox(height: AppSpacing.s32),
-                  _SectionHeader(
-                    title: 'Recomendados para ti',
-                    onSeeAll: () => ref
-                        .read(activeTabProvider.notifier)
-                        .select(AppTab.search),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  _ResponsiveSongGrid(
-                    songs: recommended,
-                    crossAxisCount: isDesktop
-                        ? 4
-                        : isTablet
-                        ? 3
-                        : 2,
-                    childAspectRatio: 0.7,
-                  ),
-                  if (topArtists.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.s32),
-                    _SectionHeader(
-                      title: 'Artistas principales',
-                      onSeeAll: () => ref
-                          .read(activeTabProvider.notifier)
-                          .select(AppTab.search),
-                    ),
-                    const SizedBox(height: AppSpacing.s12),
-                    _ArtistGrid(
-                      songs: topArtists,
-                      crossAxisCount: isDesktop
-                          ? 4
-                          : isTablet
-                          ? 3
-                          : 2,
-                      childAspectRatio: 0.65,
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.s32),
-                ]),
-              ),
+              sliver: SliverList(delegate: SliverChildListDelegate(sections)),
             ),
           ],
         );
@@ -273,9 +267,16 @@ class _HomeContent extends ConsumerWidget {
 
 class _HeroSection extends StatelessWidget {
   final Song? recentSong;
+  final bool isDemo;
   final VoidCallback onPlayRecent;
+  final VoidCallback onExplore;
 
-  const _HeroSection({required this.recentSong, required this.onPlayRecent});
+  const _HeroSection({
+    required this.recentSong,
+    required this.isDemo,
+    required this.onPlayRecent,
+    required this.onExplore,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -310,7 +311,9 @@ class _HeroSection extends StatelessWidget {
                     flex: 3,
                     child: _HeroContent(
                       recentSong: recentSong,
+                      isDemo: isDemo,
                       onPlayRecent: onPlayRecent,
+                      onExplore: onExplore,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.s24),
@@ -325,7 +328,9 @@ class _HeroSection extends StatelessWidget {
                 children: [
                   _HeroContent(
                     recentSong: recentSong,
+                    isDemo: isDemo,
                     onPlayRecent: onPlayRecent,
+                    onExplore: onExplore,
                   ),
                   const SizedBox(height: AppSpacing.s24),
                   _HeroArtwork(recentSong: recentSong),
@@ -338,9 +343,16 @@ class _HeroSection extends StatelessWidget {
 
 class _HeroContent extends StatelessWidget {
   final Song? recentSong;
+  final bool isDemo;
   final VoidCallback onPlayRecent;
+  final VoidCallback onExplore;
 
-  const _HeroContent({required this.recentSong, required this.onPlayRecent});
+  const _HeroContent({
+    required this.recentSong,
+    required this.isDemo,
+    required this.onPlayRecent,
+    required this.onExplore,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -363,6 +375,28 @@ class _HeroContent extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
+        if (isDemo) ...[
+          const SizedBox(height: AppSpacing.s8),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s8,
+              vertical: AppSpacing.s4,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.accent),
+            ),
+            child: Text(
+              'Modo demostración: catálogo de muestra',
+              style: AppTextStyles.bodySecondary.copyWith(
+                color: AppColors.accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.s16),
         _buildContinueListeningSection(context, recentSong),
       ],
@@ -387,7 +421,7 @@ class _HeroContent extends StatelessWidget {
       );
     }
     return FilledButton.icon(
-      onPressed: () {},
+      onPressed: onExplore,
       icon: const Icon(Icons.play_arrow_rounded),
       label: const Text('Explorar catálogo'),
       style: FilledButton.styleFrom(
@@ -629,11 +663,13 @@ class _ResponsiveSongGrid extends StatelessWidget {
   final List<Song> songs;
   final int crossAxisCount;
   final double childAspectRatio;
+  final ValueChanged<Song> onTapSong;
 
   const _ResponsiveSongGrid({
     required this.songs,
     required this.crossAxisCount,
     required this.childAspectRatio,
+    required this.onTapSong,
   });
 
   @override
@@ -652,7 +688,7 @@ class _ResponsiveSongGrid extends StatelessWidget {
       itemCount: songs.length,
       itemBuilder: (context, index) {
         final song = songs[index];
-        return _GridSongCard(song: song, onTap: () {});
+        return _GridSongCard(song: song, onTap: () => onTapSong(song));
       },
     );
   }
@@ -766,11 +802,13 @@ class _ArtistGrid extends StatelessWidget {
   final List<Song> songs;
   final int crossAxisCount;
   final double childAspectRatio;
+  final ValueChanged<Song> onTapSong;
 
   const _ArtistGrid({
     required this.songs,
     required this.crossAxisCount,
     required this.childAspectRatio,
+    required this.onTapSong,
   });
 
   @override
@@ -799,7 +837,7 @@ class _ArtistGrid extends StatelessWidget {
           artistName: artist,
           songCount: artistSongs.length,
           artworkUrl: artistSongs.first.artworkUrl,
-          onTap: () {},
+          onTap: () => onTapSong(artistSongs.first),
         );
       },
     );

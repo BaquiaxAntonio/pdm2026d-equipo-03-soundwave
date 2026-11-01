@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/song_selection.dart';
 import 'data/player_queue_repository.dart';
 import 'player_cover_local.dart';
 import 'player_queue_view.dart';
@@ -93,6 +94,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  // Contrato con Inicio: la canción se elige por ID estable, nunca por título.
+  // Mientras la cola visible siga siendo la del reproductor, si la canción no
+  // está en ella se avisa en lugar de reproducir otra distinta.
+  void _openSelectedSong(String songId) {
+    if (store.playableSongs.any((song) => song.id == songId)) {
+      while (store.currentSong?.id != songId) {
+        store.next();
+      }
+      setState(() {});
+      return;
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La canción seleccionada aún no está en la cola del reproductor.',
+          ),
+        ),
+      );
+  }
+
   Future<void> _downloadCurrent() async {
     final song = store.currentSong;
     if (song == null || _requestingDownload) return;
@@ -114,6 +137,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget build(BuildContext context) {
     ref.listen(fullPlayerQueueProvider, (_, next) {
       next.whenData(_syncQueue);
+    });
+    ref.listen<String?>(selectedSongIdProvider, (previous, next) {
+      if (next == null || next == previous) return;
+      _openSelectedSong(next);
     });
     ref.watch(fullPlayerQueueProvider);
     return Scaffold(

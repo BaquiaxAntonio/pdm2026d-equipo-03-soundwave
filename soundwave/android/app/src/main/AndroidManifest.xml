@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Wikimedia Commons search and audio download need the network in every
+         build type, not only in debug/profile. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="soundfree"
+        android:label="SoundWave"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

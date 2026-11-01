@@ -5,6 +5,7 @@ import 'app/navigation_provider.dart';
 import 'features/downloads/download_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
+import 'features/player/providers/player_from_downloads_provider.dart';
 import 'features/search/search_screen.dart';
 
 void main() {
@@ -36,6 +37,9 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Composition point: keep the real playback controller fed from the
+    // completed downloads instead of relying on test overrides.
+    ref.watch(playerFromDownloadsProvider);
     final activeTab = ref.watch(activeTabProvider);
     return Scaffold(
       body: IndexedStack(index: activeTab.index, children: _screens),
