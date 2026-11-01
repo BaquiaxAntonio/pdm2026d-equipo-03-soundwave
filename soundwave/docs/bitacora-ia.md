@@ -12,6 +12,25 @@
   junto a títulos largos. Se corrigieron los títulos con espacio flexible y se
   confirmó el caso de texto grande con la suite completa.
 
+## Cierre del MVP: Inicio, navegación y aceptación Android (2.4)
+
+- Se usó IA para revisar el Inicio de #40 y detectar que su provider mantenía
+  un fixture propio (`mock_songs.dart`) separado del catálogo y la biblioteca
+  compartidos. Se sustituyó por la biblioteca de descargas en Android y por el
+  catálogo de demostración de Buscar en el objetivo de demostración.
+- Se agregó `selectedSongIdProvider` para que Inicio, Buscar y el Reproductor
+  compartan la canción por ID estable en lugar de por título.
+- Se conectaron las acciones que no hacían nada (tarjetas, artistas, estado
+  vacío) y se conservó la navegación por `activeTabProvider` de #36.
+- Se conectó `playerFromDownloadsProvider` en `MainShell` para no depender de
+  overrides de pruebas.
+- Se corrigió el manifiesto Android (permiso de Internet en el manifiesto
+  principal, nombre e identificador) y se añadió firma release opcional vía
+  `key.properties` ignorado por Git.
+- Se rechazó reescribir la pantalla del Reproductor: la unificación del motor
+  real y de la cola pertenece a la tarea 2.3. Inicio deja el ID seleccionado y
+  avisa si la canción todavía no está en la cola visible.
+
 ## Laboratorio 4: filtros reactivos
 
 - Se implementó un filtro inmutable para mostrar todas las descargas o solo
