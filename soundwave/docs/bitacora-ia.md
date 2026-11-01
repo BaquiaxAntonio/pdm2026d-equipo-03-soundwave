@@ -40,3 +40,22 @@
 - La prueba abre una base v1 con canciones, listas y membresías, la actualiza
   a v2 y comprueba que los datos siguen, que `archived` existe y que el índice
   rechaza nombres repetidos.
+
+## Laboratorio 16: CRUD de listas
+
+- La entidad fue `playlists`: lista, crear, editar, archivar y borrar. El
+  formulario `PlaylistForm` es uno solo para crear y editar; recibe el registro
+  inicial (o nada) y una función `onSave`, y no conoce SQL ni providers.
+  Renombrar hace UPDATE de la misma fila por id, así que el id no cambia.
+- Las reglas viven en `SqlitePlaylistRepository`: el nombre repetido se traduce
+  de `DatabaseException` a un mensaje humano y borrar una lista con canciones
+  se bloquea con el conteo y la opción de archivarla.
+- La pantalla invalida `playlistEntriesProvider` después de crear, editar,
+  archivar o borrar; nunca inserta el valor guardado a mano en la lista.
+- Se rechazó que el formulario consultara la base para validar duplicados: la
+  validación queda en el repositorio y el formulario solo muestra el mensaje.
+  También se rechazó borrar en cascada las canciones de una lista, porque la
+  regla pide proteger lo que está en uso.
+- Las pruebas cubren repositorio (nombre único, borrado en uso, id estable) y
+  widget (formulario lleno, guardar cambios, mensaje de nombre repetido y
+  archivado tras intentar borrar una lista en uso).

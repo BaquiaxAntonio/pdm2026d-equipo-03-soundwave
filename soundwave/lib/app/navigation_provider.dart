@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum AppTab { home, search, player, downloads }
+enum AppTab { home, search, player, downloads, playlists }
 
 final activeTabProvider = NotifierProvider<ActiveTabNotifier, AppTab>(
   ActiveTabNotifier.new,
