@@ -97,8 +97,7 @@ Future<void> upgradeDatabaseSchema(
 ) async {
   if (oldVersion < 1 && newVersion >= 1) {
     await createDatabaseSchema(database);
-  }
-  if (oldVersion < 2 && newVersion >= 2) {
+  } else if (oldVersion < 2 && newVersion >= 2) {
     await database.execute('ALTER TABLE songs ADD COLUMN license TEXT');
     await database.execute('ALTER TABLE songs ADD COLUMN license_url TEXT');
     await database.execute('ALTER TABLE songs ADD COLUMN attribution TEXT');
