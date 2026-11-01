@@ -68,19 +68,21 @@ class UserDao {
   )).map(AppUser.fromMap).toList(growable: false);
 
   Future<void> update(AppUser user, {String? password}) async {
-    if (user.username.trim().isEmpty)
+    if (user.username.trim().isEmpty) {
       throw ArgumentError.value(user.username, 'username');
+    }
     final values = <String, Object?>{
       'username': user.username.trim(),
       'display_name': _clean(user.displayName),
     };
     if (password != null) {
-      if (password.length < 8)
+      if (password.length < 8) {
         throw ArgumentError.value(
           password,
           'password',
           'Must be at least 8 characters.',
         );
+      }
       final salt = List<int>.generate(16, (_) => Random.secure().nextInt(256));
       values['password_hash'] = _encodeHash(password, salt);
     }
@@ -97,14 +99,16 @@ class UserDao {
   }
 
   void _validate(String username, String password) {
-    if (username.isEmpty)
+    if (username.isEmpty) {
       throw ArgumentError.value(username, 'username', 'Required.');
-    if (password.length < 8)
+    }
+    if (password.length < 8) {
       throw ArgumentError.value(
         password,
         'password',
         'Must be at least 8 characters.',
       );
+    }
   }
 
   String _encodeHash(String password, List<int> salt) =>
