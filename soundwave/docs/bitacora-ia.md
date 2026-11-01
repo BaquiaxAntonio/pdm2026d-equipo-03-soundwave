@@ -238,3 +238,28 @@ cambio a los datos existentes sin tener que borrar la base.
   migración nunca destruye datos del usuario.
 - Se rechazó duplicar la migración del reproductor: dos pasos que agregan la
   misma columna romperían la actualización de los teléfonos que ya migraron.
+
+## Laboratorio 16: CRUD de listas
+
+- La entidad fue `playlists`: listar, crear, editar, archivar y borrar. El
+  formulario `PlaylistForm` es uno solo para crear y editar; recibe el registro
+  inicial (o nada) y una función `onSave`, y no conoce SQL ni providers.
+  Renombrar hace UPDATE de la misma fila por id, así que el id no cambia.
+- Las reglas viven en `SqlitePlaylistRepository`: el nombre repetido se detecta
+  con una consulta dentro de la misma transacción del alta o de la edición, y
+  borrar una lista con canciones se bloquea con el conteo y la opción de
+  archivarla.
+- La unicidad se adaptó a la decisión del equipo: el índice UNIQUE de la base
+  solo cubre las listas del reproductor (`player_managed = 1`), así que la
+  pestaña Listas valida el nombre en código en lugar de cambiar el esquema o
+  renombrar listas existentes. Los errores de SQL del índice del reproductor se
+  siguen traduciendo a un mensaje humano.
+- La pantalla invalida `playlistEntriesProvider` después de crear, editar,
+  archivar o borrar; nunca inserta el valor guardado a mano en la lista.
+- Se rechazó que el formulario consultara la base para validar duplicados: la
+  validación queda en el repositorio y el formulario solo muestra el mensaje.
+  También se rechazó borrar en cascada las canciones de una lista, porque la
+  regla pide proteger lo que está en uso.
+- Las pruebas cubren repositorio (nombre único, borrado en uso, id estable) y
+  widget (formulario lleno, guardar cambios, mensaje de nombre repetido y
+  archivado tras intentar borrar una lista en uso).

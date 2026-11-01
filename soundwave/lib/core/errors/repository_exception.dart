@@ -1,4 +1,12 @@
-enum RepositoryErrorCode { network, notFound, conflict, storage, invalidData }
+enum RepositoryErrorCode {
+  network,
+  notFound,
+  conflict,
+  duplicateName,
+  inUse,
+  storage,
+  invalidData,
+}
 
 /// Expected, recoverable failures raised by repository implementations.
 class RepositoryException implements Exception {

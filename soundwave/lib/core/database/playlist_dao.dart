@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../models/playlist.dart';
+
 class PlaylistDao {
   const PlaylistDao(this.database);
 
@@ -7,6 +9,68 @@ class PlaylistDao {
 
   Future<void> create({required String id, required String name}) =>
       database.insert('playlists', {'id': id, 'name': name});
+
+  /// Whether a list already uses [name], ignoring case and leaving [exceptId]
+  /// out so a list can keep its own name while it is edited.
+  Future<bool> nameExists(String name, {String? exceptId}) async {
+    final rows = await database.rawQuery(
+      'SELECT 1 FROM playlists '
+      'WHERE name = ? COLLATE NOCASE AND id <> ? LIMIT 1',
+      [name, exceptId ?? ''],
+    );
+    return rows.isNotEmpty;
+  }
+
+  /// Active and archived playlists with their song count, ordered by state and
+  /// name so the UI shows active lists first.
+  Future<List<PlaylistEntry>> entries() async {
+    final rows = await database.rawQuery('''
+SELECT p.id, p.name, p.archived, COUNT(ps.song_id) AS song_count
+FROM playlists p
+LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id
+GROUP BY p.id, p.name, p.archived
+ORDER BY p.archived, p.name COLLATE NOCASE
+''');
+    return rows
+        .map(
+          (row) => PlaylistEntry(
+            playlist: Playlist.fromMap(row),
+            songCount: (row['song_count'] as int?) ?? 0,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<Playlist?> findById(String id) async {
+    final rows = await database.query(
+      'playlists',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    return rows.isEmpty ? null : Playlist.fromMap(rows.first);
+  }
+
+  Future<int> rename({required String id, required String name}) => database
+      .update('playlists', {'name': name}, where: 'id = ?', whereArgs: [id]);
+
+  Future<int> setArchived({required String id, required bool archived}) =>
+      database.update(
+        'playlists',
+        {'archived': archived ? 1 : 0},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+  Future<int> songCount(String id) async {
+    final rows = await database.rawQuery(
+      'SELECT COUNT(*) AS total FROM playlist_songs WHERE playlist_id = ?',
+      [id],
+    );
+    return (rows.single['total'] as int?) ?? 0;
+  }
+
+  Future<int> delete(String id) =>
+      database.delete('playlists', where: 'id = ?', whereArgs: [id]);
 
   Future<void> ensureOfflineCollection() async {
     await database.insert('playlists', {

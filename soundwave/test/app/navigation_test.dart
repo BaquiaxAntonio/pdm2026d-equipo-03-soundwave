@@ -26,6 +26,7 @@ void main() {
           AppTab.search => 'Buscar',
           AppTab.player => 'Reproductor',
           AppTab.downloads => 'Descargas',
+          AppTab.playlists => 'Listas',
         }),
       );
       await tester.pumpAndSettle();

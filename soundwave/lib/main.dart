@@ -6,6 +6,7 @@ import 'features/downloads/download_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
 import 'features/player/providers/player_from_downloads_provider.dart';
+import 'features/playlists/playlist_screen.dart';
 import 'features/search/search_screen.dart';
 
 void main() {
@@ -28,13 +29,6 @@ class MyApp extends StatelessWidget {
 class MainShell extends ConsumerWidget {
   const MainShell({super.key});
 
-  static const List<Widget> _screens = [
-    HomeScreen(),
-    SearchScreen(),
-    PlayerScreen(),
-    DownloadScreen(),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Composition point: keep the real playback controller fed from the
@@ -42,7 +36,21 @@ class MainShell extends ConsumerWidget {
     ref.watch(playerFromDownloadsProvider);
     final activeTab = ref.watch(activeTabProvider);
     return Scaffold(
-      body: IndexedStack(index: activeTab.index, children: _screens),
+      body: IndexedStack(
+        index: activeTab.index,
+        children: [
+          const HomeScreen(),
+          const SearchScreen(),
+          const PlayerScreen(),
+          const DownloadScreen(),
+          // Playlists load from the database, so they are built the first time
+          // the tab is opened instead of at startup.
+          _LazyTab(
+            active: activeTab == AppTab.playlists,
+            builder: (_) => const PlaylistScreen(),
+          ),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: activeTab.index,
         onDestinationSelected: (index) =>
@@ -68,8 +76,39 @@ class MainShell extends ConsumerWidget {
             selectedIcon: Icon(Icons.download),
             label: 'Descargas',
           ),
+          NavigationDestination(
+            icon: Icon(Icons.queue_music_outlined),
+            selectedIcon: Icon(Icons.queue_music),
+            label: 'Listas',
+          ),
         ],
       ),
     );
   }
+}
+
+/// Builds its child once, the first time [active] becomes true, and keeps it
+/// alive afterwards so tab state is not lost.
+class _LazyTab extends StatefulWidget {
+  const _LazyTab({required this.active, required this.builder});
+
+  final bool active;
+  final WidgetBuilder builder;
+
+  @override
+  State<_LazyTab> createState() => _LazyTabState();
+}
+
+class _LazyTabState extends State<_LazyTab> {
+  late bool _started = widget.active;
+
+  @override
+  void didUpdateWidget(_LazyTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active) _started = true;
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _started ? widget.builder(context) : const SizedBox.shrink();
 }
