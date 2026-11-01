@@ -3,6 +3,11 @@ import 'package:sqflite/sqflite.dart';
 const databaseName = 'soundwave.db';
 const databaseVersion = 2;
 
+// ============================================================
+// TABLAS DE LA BASE DE DATOS
+// ============================================================
+
+// Tabla de canciones
 const createSongsTable = '''
 CREATE TABLE songs (
   id TEXT PRIMARY KEY,
@@ -20,6 +25,7 @@ CREATE TABLE songs (
 )
 ''';
 
+// Tabla de descargas
 const createDownloadsTable = '''
 CREATE TABLE downloads (
   song_id TEXT PRIMARY KEY REFERENCES songs(id) ON DELETE CASCADE,
@@ -35,6 +41,7 @@ CREATE TABLE downloads (
 )
 ''';
 
+// Tabla de listas de reproducción
 const createPlaylistsTable = '''
 CREATE TABLE playlists (
   id TEXT PRIMARY KEY,
@@ -42,6 +49,7 @@ CREATE TABLE playlists (
 )
 ''';
 
+// Relación entre listas y canciones
 const createPlaylistSongsTable = '''
 CREATE TABLE playlist_songs (
   playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
@@ -52,6 +60,7 @@ CREATE TABLE playlist_songs (
 )
 ''';
 
+// Canciones bloqueadas por lista
 const createBlockedSongsTable = '''
 CREATE TABLE blocked_songs (
   playlist_id TEXT NOT NULL,
@@ -63,14 +72,19 @@ CREATE TABLE blocked_songs (
 )
 ''';
 
+// Tabla de usuarios
 const createUsersTable = '''
 CREATE TABLE users (
- id TEXT PRIMARY KEY,
- username TEXT NOT NULL COLLATE NOCASE UNIQUE,
- display_name TEXT,
- password_hash TEXT NOT NULL
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  display_name TEXT,
+  password_hash TEXT NOT NULL
 )
 ''';
+
+// ============================================================
+// SENTENCIAS PARA CREAR LA BASE DE DATOS
+// ============================================================
 
 const createSchemaStatements = [
   createSongsTable,
@@ -84,24 +98,125 @@ const createSchemaStatements = [
   'CREATE INDEX idx_downloads_state ON downloads(state)',
 ];
 
+// Migración de listas administradas por Player.
+// Solo las listas creadas por Player participan
+// en el índice UNIQUE de nombres.
+const playerPlaylistMigration = [
+  'ALTER TABLE playlists ADD COLUMN player_managed INTEGER NOT NULL DEFAULT 0 CHECK (player_managed IN (0, 1))',
+  'ALTER TABLE playlists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1))',
+  '''CREATE UNIQUE INDEX idx_player_playlist_name
+     ON playlists(trim(name) COLLATE NOCASE)
+     WHERE player_managed = 1''',
+];
+
+// ============================================================
+// CREACIÓN DE UNA BASE DE DATOS NUEVA
+// ============================================================
+
 Future<void> createDatabaseSchema(DatabaseExecutor database) async {
   for (final statement in createSchemaStatements) {
     await database.execute(statement);
   }
+
+  // Las columnas de licencia y la tabla users
+  // ya están incluidas en el esquema inicial.
+  // Solo aplicamos las columnas e índice del Player.
+  await _upgradePlayerPlaylists(database);
 }
+
+// ============================================================
+// FUNCIONES AUXILIARES
+// ============================================================
+
+// Obtener los nombres de las columnas existentes.
+Future<Set<String>> _getTableColumns(
+  DatabaseExecutor database,
+  String tableName,
+) async {
+  final result = await database.rawQuery('PRAGMA table_info($tableName)');
+
+  return result.map((column) => column['name'] as String).toSet();
+}
+
+// Agregar una columna únicamente cuando no existe.
+Future<void> _addColumnIfMissing(
+  DatabaseExecutor database,
+  String tableName,
+  String columnName,
+  String columnDefinition,
+) async {
+  final columns = await _getTableColumns(database, tableName);
+
+  if (!columns.contains(columnName)) {
+    await database.execute(
+      'ALTER TABLE $tableName ADD COLUMN '
+      '$columnName $columnDefinition',
+    );
+  }
+}
+
+// Migración de las listas de reproducción.
+Future<void> _upgradePlayerPlaylists(DatabaseExecutor database) async {
+  await _addColumnIfMissing(
+    database,
+    'playlists',
+    'player_managed',
+    'INTEGER NOT NULL DEFAULT 0 '
+        'CHECK (player_managed IN (0, 1))',
+  );
+
+  await _addColumnIfMissing(
+    database,
+    'playlists',
+    'archived',
+    'INTEGER NOT NULL DEFAULT 0 '
+        'CHECK (archived IN (0, 1))',
+  );
+
+  await database.execute(
+    '''CREATE UNIQUE INDEX IF NOT EXISTS idx_player_playlist_name
+       ON playlists(trim(name) COLLATE NOCASE)
+       WHERE player_managed = 1''',
+  );
+}
+
+// ============================================================
+// ACTUALIZACIÓN DE LA BASE DE DATOS
+// ============================================================
 
 Future<void> upgradeDatabaseSchema(
   DatabaseExecutor database,
   int oldVersion,
   int newVersion,
 ) async {
+  // Crear el esquema cuando se parte de la versión 0.
   if (oldVersion < 1 && newVersion >= 1) {
     await createDatabaseSchema(database);
-  } else if (oldVersion < 2 && newVersion >= 2) {
-    await database.execute('ALTER TABLE songs ADD COLUMN license TEXT');
-    await database.execute('ALTER TABLE songs ADD COLUMN license_url TEXT');
-    await database.execute('ALTER TABLE songs ADD COLUMN attribution TEXT');
-    await database.execute('ALTER TABLE songs ADD COLUMN source_url TEXT');
-    await database.execute(createUsersTable);
+    return;
+  }
+
+  // Migración de la versión 1 a la versión 2.
+  if (oldVersion < 2 && newVersion >= 2) {
+    // Agregar las columnas de licencia solo si faltan.
+    await _addColumnIfMissing(database, 'songs', 'license', 'TEXT');
+
+    await _addColumnIfMissing(database, 'songs', 'license_url', 'TEXT');
+
+    await _addColumnIfMissing(database, 'songs', 'attribution', 'TEXT');
+
+    await _addColumnIfMissing(database, 'songs', 'source_url', 'TEXT');
+
+    // Crear la tabla de usuarios solo si no existe.
+    await database.execute('''
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        display_name TEXT,
+        password_hash TEXT NOT NULL
+      )
+    ''');
+
+    // Aplicar la migración de listas del Player.
+    await _upgradePlayerPlaylists(database);
   }
 }
