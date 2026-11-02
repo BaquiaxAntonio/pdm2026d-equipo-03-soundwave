@@ -101,7 +101,7 @@ void main() {
   });
 
   test(
-    'upgrades a populated v1 file and persists v2 CRUD after reopening',
+    'upgrades a populated v1 file and persists v3 CRUD after reopening',
     () async {
       final directory = await Directory.systemTemp.createTemp('soundwave-v1-');
       final databasePath = path.join(directory.path, 'migration.db');
@@ -153,7 +153,7 @@ void main() {
             onUpgrade: upgradeDatabaseSchema,
           ),
         );
-        expect(await opened.getVersion(), 2);
+        expect(await opened.getVersion(), 3);
         expect((await SongDao(opened).findById(song.id))?.title, song.title);
         expect(
           (await DownloadDao(opened).findBySongId(song.id))?.localPath,

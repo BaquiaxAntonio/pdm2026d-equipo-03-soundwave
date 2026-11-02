@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 const databaseName = 'soundwave.db';
-const databaseVersion = 2;
+const databaseVersion = 3;
 
 // ============================================================
 // TABLAS DE LA BASE DE DATOS
@@ -217,6 +217,13 @@ Future<void> upgradeDatabaseSchema(
     ''');
 
     // Aplicar la migración de listas del Player.
+    await _upgradePlayerPlaylists(database);
+  }
+
+  // La v2 quedó publicada con dos esquemas distintos: la versión inicial
+  // de Henry no tenía las columnas de Player, mientras que la de Ramos sí.
+  // La v3 completa lo que falte en ambos casos sin alterar los datos previos.
+  if (oldVersion < 3 && newVersion >= 3) {
     await _upgradePlayerPlaylists(database);
   }
 }
