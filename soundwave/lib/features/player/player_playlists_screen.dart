@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/playlist_refresh.dart';
 import 'data/player_playlist_repository.dart';
 import 'models/player_playlist.dart';
 import 'player_song_local.dart';
@@ -66,7 +67,7 @@ class PlayerPlaylistsScreen extends ConsumerWidget {
               name: name,
               songIds: songIds,
             );
-            ref.invalidate(playerPlaylistsProvider);
+            invalidatePlaylistViews(ref);
             return null;
           } on PlayerPlaylistException catch (error) {
             return error.message;
@@ -96,7 +97,7 @@ class PlayerPlaylistsScreen extends ConsumerWidget {
         playerPlaylistRepositoryProvider.future,
       );
       await repository.setArchived(entry.id, !entry.archived);
-      ref.invalidate(playerPlaylistsProvider);
+      invalidatePlaylistViews(ref);
       if (context.mounted) {
         _message(
           context,
@@ -138,7 +139,7 @@ class PlayerPlaylistsScreen extends ConsumerWidget {
         playerPlaylistRepositoryProvider.future,
       );
       await repository.delete(entry.id);
-      ref.invalidate(playerPlaylistsProvider);
+      invalidatePlaylistViews(ref);
       if (context.mounted) _message(context, 'Lista eliminada.');
     } on PlayerPlaylistException catch (error) {
       if (!context.mounted) return;
