@@ -263,3 +263,21 @@ cambio a los datos existentes sin tener que borrar la base.
 - Las pruebas cubren repositorio (nombre único, borrado en uso, id estable) y
   widget (formulario lleno, guardar cambios, mensaje de nombre repetido y
   archivado tras intentar borrar una lista en uso).
+
+## Laboratorio: migración SQLite v3 e historial de playlists
+
+- Se verificó que `main` incluye el PR #48 de Carmen antes de crear la rama
+  `fix/43-migracion-sqlite-v3`. Se encontró que v2 se publicó tanto con el
+  esquema inicial de Henry (licencias y usuarios, sin columnas de Player) como
+  con el esquema posterior de Ramos (columnas e índice parcial de Player).
+- Se incrementó la versión a 3. La v3 comprueba columnas e índice existentes y
+  completa `player_managed`, `archived` y `idx_player_playlist_name`; no
+  reconstruye tablas ni modifica filas, nombres o relaciones. En v1 se ejecutan
+  además los pasos históricos de v2 antes del complemento v3.
+- Se congelaron los esquemas v1 y las dos variantes v2 en las pruebas de
+  migración. Se cubren v1→v3, ambas variantes v2→v3, instalación nueva v3,
+  conservación de IDs, canciones, licencias, usuarios, descargas, relaciones y
+  bloqueos, el índice parcial y CRUD después de migrar y reabrir.
+- No se cambia la regla de unicidad: el índice solo aplica cuando
+  `player_managed = 1`; las listas históricas permanecen en 0 por defecto y no
+  se renombran ni eliminan.
