@@ -16,6 +16,62 @@ revisó y qué se corrigió antes de integrar el cambio.
 | Commit / PR | Enlace cuando exista |
 
 ---
+## 2026-11-01 · @Ortizcarmen — CRUD: refresco entre interfaces y evidencia
+
+- **Herramienta:** Codex.
+- **Solicitud:** completar primero la parte de Carmen reutilizando el CRUD de
+  #42 y #46, sin esperar a Henry ni modificar esquema, migraciones, contratos
+  o repositorios de persistencia. Base: `main` en `836c50c`; rama local
+  `feat/carmen-crud-refresco-listas`.
+- **Selección:** listas administradas por el reproductor, cuyo índice UNIQUE
+  real cubre `player_managed = 1`. Se conserva su formulario único de alta y
+  edición, UPDATE por ID, mensajes humanos y borrado en uso con archivado.
+  La pestaña Listas general conserva su alcance y validación existentes.
+- **Cambio aceptado:** `app/playlist_refresh.dart` invalida los dos snapshots
+  después de guardar, archivar, restaurar o borrar correctamente desde cualquiera
+  de las interfaces. No recrea repositorios, altera datos ni sincroniza dos
+  catálogos en memoria. Los reintentos de carga existentes se conservan.
+- **Pruebas nuevas:** cuatro widgets mantienen ambas pantallas montadas y usan
+  un estado compartido controlado. Cubren alta/edición con el mismo formulario
+  e ID, nombres y archivado reflejados en ambos sentidos, restauración, borrado
+  vacío, duplicado al editar sin pérdida de datos y borrado en uso con archivado
+  conservando las canciones. No sustituyen las pruebas SQLite existentes.
+- **Verificación:** `dart format` en los cuatro archivos Dart afectados, sin
+  cambios pendientes; `flutter analyze --no-pub`, sin incidencias;
+  `flutter test --no-pub test/core/database test/features/playlists
+  test/features/player/player_playlist_repository_test.dart
+  test/features/player/player_playlists_widget_test.dart --reporter expanded`:
+  **53 aprobadas, 0 fallidas y 0 omitidas**, incluidas las cuatro pruebas nuevas.
+  Se usó un alias temporal ASCII para la ruta local; después fue retirado.
+- **Límite reservado a Henry:** migración v3 y pruebas desde v1, v2 histórica
+  de #41 y v2 actual. Esta entrega no corrige ese problema de bases antiguas.
+- **Entrega:** publicación autorizada posteriormente por Carmen: commit
+  `fix: sincronizar listas y completar pruebas CRUD` y PR hacia `main`, sin
+  fusionarlo. La revisión cruzada y el resultado de CI se comprueban al publicar;
+  la migración v3 queda fuera de este cambio.
+
+### Pasos de demostración de la parte de Carmen
+
+1. Usar una base de pruebas compatible con el esquema actual o una instalación
+   nueva. No borrar datos personales para evitar la migración histórica pendiente.
+2. Abrir Reproductor → icono «Listas de reproducción» → «Nueva lista». Crear
+   «Lab Carmen» sin canciones y comprobar que aparece automáticamente.
+3. Tocar la lista: el mismo formulario aparece lleno. Renombrar a «Lab Carmen
+   editada», guardar y comprobar el cambio. La conservación de ID se acredita
+   además con las pruebas de repositorio y widget.
+4. Intentar crear otra «lab carmen editada»: mostrar el mensaje humano de
+   duplicado y que el formulario no se cierre. Cancelar.
+5. Volver y abrir la pestaña Listas: comprobar el nombre actualizado sin recargar.
+   Archivar y desarchivar la misma lista; volver a las listas del reproductor
+   y comprobar que ambas interfaces reflejan su estado.
+6. Crear desde el reproductor otra lista seleccionando una canción disponible.
+   Intentar eliminarla: mostrar «Lista en uso» y la opción «Archivar».
+   Archivar y comprobar que la canción y la lista se conservan en ambas vistas.
+7. Eliminar la lista vacía, confirmar y comprobar que desaparece en ambas vistas.
+8. Capturar estas operaciones en Android al preparar la entrega. En esta sesión
+   la evidencia ejecutada es automatizada; no se adjuntan capturas ni se afirma
+   validación manual o reproducción de audio real.
+
 ## 2026-10-29 · @Ortizcarmen — resolución e integración de PR #32 y #36
 
  Updated upstream

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_theme.dart';
+import '../../app/playlist_refresh.dart';
 import '../../core/contracts/playlist_repository.dart';
 import '../../core/errors/repository_exception.dart';
 import '../../core/models/playlist.dart';
@@ -138,7 +139,7 @@ class PlaylistScreen extends ConsumerWidget {
           }
           // The list is refreshed by invalidating the provider, never by
           // inserting the saved value by hand.
-          ref.invalidate(playlistEntriesProvider);
+          invalidatePlaylistViews(ref);
         },
       ),
     );
@@ -153,7 +154,7 @@ class PlaylistScreen extends ConsumerWidget {
     try {
       final repository = await ref.read(playlistRepositoryProvider.future);
       await repository.setArchived(id: entry.playlist.id, archived: archived);
-      ref.invalidate(playlistEntriesProvider);
+      invalidatePlaylistViews(ref);
       if (context.mounted) {
         _showMessage(
           context,
@@ -194,7 +195,7 @@ class PlaylistScreen extends ConsumerWidget {
     try {
       final repository = await ref.read(playlistRepositoryProvider.future);
       await repository.delete(entry.playlist.id);
-      ref.invalidate(playlistEntriesProvider);
+      invalidatePlaylistViews(ref);
       messenger.showSnackBar(const SnackBar(content: Text('Lista eliminada.')));
     } on RepositoryException catch (error) {
       if (error.code != RepositoryErrorCode.inUse) {
