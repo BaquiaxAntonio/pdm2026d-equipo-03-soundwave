@@ -10,8 +10,8 @@ class DownloadInput {
   });
   final Stream<List<int>> bytes;
   final int? totalBytes;
-  final void Function()? close;
   final String? expectedSha1;
+  final void Function()? close;
 }
 
 typedef OpenDownload = Future<DownloadInput> Function(Song song);

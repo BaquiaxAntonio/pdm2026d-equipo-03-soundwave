@@ -1,5 +1,56 @@
 # Actividades de Carmen — evidencia de integración
 
+## Integración posterior a la fusión de #51 — 3 de noviembre de 2026
+
+Estado vigente; las secciones inferiores conservan el historial de la entrega.
+
+- Auditoría repetida: árbol limpio, cinco stashes conservados; `origin/main`
+  avanzó a `5d47e7f` por la fusión de #51 (2026-11-03 21:53:51 UTC). Main local
+  se actualizó por fast-forward. #52 continúa abierto; #50 abierto con conflictos.
+  Henry aprobó ambos PR; no hay comentarios de línea ni solicitudes de cambios.
+- Se incorpora main a la rama de Carmen. Conflicto textual en factory resuelto
+  usando `audio.song`, que conserva identidad y metadatos actuales del resolver
+  de Ramos. Se mantienen SHA-1, tamaño, duplicados y limpieza de Carmen.
+- El merge automático duplicaba `DownloadInput.expectedSha1` y la función Web
+  `createOpenDownload`, causando errores de compilación. Se dejan definiciones
+  únicas. Se elimina el User-Agent duplicado, manteniendo el compartido de Commons.
+- Se conserva `DownloadSession.localAudioUri` y se valida con `files.exists`
+  (integridad del contenedor, además de existencia) antes de entregar la URI.
+  No se cambia motor, cola, dependencias ni migraciones de Ramos/Henry.
+- La composición de main ya conecta la guarda real de Ramos. Nueva prueba de
+  Descargas usa SQLite y archivo reales con su controlador/guarda y motor doble:
+  `openById` recibe URI local sin red; Deshacer conserva la descarga; al vencer
+  el plazo el archivo pausado permanece mientras `stop()` está bloqueado, y solo
+  se borra al terminar la liberación. No se inventa una confirmación de recursos.
+- Análisis sin incidencias; suite completa integrada: 194 aprobadas, 3 externas
+  omitidas, 0 fallidas. Cambia el total porque #51 sustituye pruebas del motor
+  anterior. Prueba externa repetida: 2 aprobadas, descarga Commons de 647212 bytes,
+  SHA-1/WAV válidos y archivo/créditos conservados tras reabrir SQLite.
+- `flutter devices` solo detecta Windows, Chrome y Edge. Aceptación Android,
+  sonido real y modo avión siguen pendientes; la prueba del motor doble no los
+  demuestra.
+
+### Diagnóstico y corrección local aislada de #50
+
+#50 elimina URLs de procedencia fabricadas y hace `sourcePageUrl` nullable.
+Sus siete archivos son adaptador/cliente de Commons, sus pruebas, pruebas de
+SQLite y bitácora. El PR pasó CI en su base anterior, pero entra en conflicto
+con el resolver ampliado de #51: una aceptación literal del lado antiguo vuelve
+a referir `evidence`, eliminado en main, requiere otra vez metadatos opcionales
+y entrega `Uri?` donde `CommonsAudioAttribution` necesita `Uri`.
+
+No es un problema de navegación, dependencias ni del repositorio de Descargas.
+No se debe restaurar el resolver antiguo ni cambiar el modelo canónico de Song.
+Se preparó desde main el worktree local
+`C:/Users/Asus/AppData/Local/Temp/soundwave-search50-compatible`, rama
+`fix/search-50-procedencia-compatible`, commit `993379c`, sin push ni PR.
+Contiene #50 conciliado: conserva `audio.song`, licencias y WAV/Ogg de main,
+añade rechazo explícito de procedencia ausente y mantiene sus pruebas.
+Análisis aprobado; Búsqueda/SQLite: 78 aprobadas, 2 externas omitidas, 0 fallidas.
+No se mezcló esta corrección de Búsqueda con #52. Requiere revisión/autorización
+para publicarse o para que JavEstrada09 incorpore la solución. Mientras tanto,
+Descargas funciona con el resolver actual de main; #50 no impide probar el flujo.
+
 ## Auditoría y actualización — 3 de noviembre de 2026
 
 ### Revisión previa a publicación

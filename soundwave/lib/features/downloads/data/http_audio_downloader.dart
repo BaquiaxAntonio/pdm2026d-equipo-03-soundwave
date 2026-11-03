@@ -60,6 +60,9 @@ class HttpAudioDownloader {
         'audio/wav',
         'audio/x-wav',
         'audio/wave',
+        'audio/ogg',
+        'application/ogg',
+        'audio/opus',
       ].contains(response.headers.contentType?.mimeType)) {
         throw const RepositoryException(
           RepositoryErrorCode.invalidData,

@@ -22,27 +22,25 @@ void main() {
     sourceId: '157450501',
   );
 
-  test(
-    'native provider rejects unreviewed Commons songs before HTTP',
-    () async {
-      final container = ProviderContainer();
-      try {
-        final open = container.read(openDownloadProvider);
-        await expectLater(
-          open(
-            Song.fromMap({
-              ...sample.toMap(),
-              'id': 'wikimedia_commons:1',
-              'source_id': '1',
-            }),
-          ),
-          throwsA(isA<CommonsAudioResolutionException>()),
-        );
-      } finally {
-        container.dispose();
-      }
-    },
-  );
+  test('native provider rejects unsupported providers before HTTP', () async {
+    final container = ProviderContainer();
+    try {
+      final open = container.read(openDownloadProvider);
+      await expectLater(
+        open(
+          Song.fromMap({
+            ...sample.toMap(),
+            'id': 'unsupported:1',
+            'provider': 'unsupported',
+            'source_id': '1',
+          }),
+        ),
+        throwsA(isA<CommonsAudioResolutionException>()),
+      );
+    } finally {
+      container.dispose();
+    }
+  });
 
   test(
     'production resolver and HTTP persist reviewed Commons audio after SQLite reopen',

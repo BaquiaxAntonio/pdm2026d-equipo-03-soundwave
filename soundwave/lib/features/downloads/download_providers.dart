@@ -10,9 +10,10 @@ import 'data/download_factory_stub.dart'
     as platform;
 
 class DownloadSession {
-  const DownloadSession(this.repository, this.findSong);
+  const DownloadSession(this.repository, this.findSong, {this.localAudioUri});
   final DownloadRepository repository;
   final Future<Song?> Function(String id) findSong;
+  final Future<Uri> Function(String relativePath)? localAudioUri;
 }
 
 class DownloadEntry {

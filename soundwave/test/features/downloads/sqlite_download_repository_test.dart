@@ -17,8 +17,11 @@ import 'package:soundwave/features/downloads/data/http_audio_downloader.dart';
 import 'package:soundwave/features/downloads/download_providers.dart';
 import 'package:soundwave/features/search/search_controller.dart';
 import 'package:soundwave/features/search/data/commons_song_adapter.dart';
+import 'package:soundwave/features/player/providers/player_provider.dart';
+import 'package:soundwave/features/player/providers/player_can_delete.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'audio_fixture.dart';
+import '../player/fake_playback_controller.dart';
 
 void main() {
   const song = Song(
@@ -59,6 +62,81 @@ void main() {
     await repository.dispose();
     await database.close();
   });
+
+  test(
+    'downloaded audio opens offline and deletion awaits decoder release',
+    () async {
+      var time = DateTime.now();
+      late ProviderContainer container;
+      final engine = FakePlaybackController();
+      final managed = SqliteDownloadRepository(
+        database: database,
+        files: files,
+        openDownload: source,
+        clock: () => time,
+        canDelete: (id) =>
+            container.read(playerDeletionGuardProvider).canDelete(id),
+      );
+      container = ProviderContainer(
+        overrides: [
+          dataModeProvider.overrideWithValue(DataMode.localSqlite),
+          playbackEngineProvider.overrideWithValue(engine),
+          playbackPreferencesProvider.overrideWith((_) async => null),
+          downloadSessionProvider.overrideWith(
+            (_) async => DownloadSession(
+              managed,
+              managed.songs.findById,
+              localAudioUri: (path) async => File(files.resolve(path)).uri,
+            ),
+          ),
+        ],
+      );
+      try {
+        await managed.enqueue(song);
+        final path = (await managed.findBySongId(song.id))!.localPath!;
+        final player = container.read(playerControllerProvider.notifier);
+        await player.openById(song.id);
+        expect(engine.loaded.single, File(files.resolve(path)).uri);
+        expect(engine.playing, isTrue);
+        expect(container.read(playerControllerProvider).error, isNull);
+        await managed.requestRemoval(
+          song.id,
+          undoUntil: time.add(const Duration(seconds: 4)),
+        );
+        await managed.undoRemoval(song.id);
+        expect(
+          (await managed.findBySongId(song.id))!.state,
+          DownloadState.completed,
+        );
+        expect(await files.exists(path), isTrue);
+        await player.pause();
+        await managed.requestRemoval(
+          song.id,
+          undoUntil: time.add(const Duration(seconds: 4)),
+        );
+        time = time.add(const Duration(seconds: 5));
+        engine.stopGate = Completer<void>();
+        final removal = managed.finalizeExpiredRemovals();
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(await files.exists(path), isTrue);
+        expect(
+          (await managed.findBySongId(song.id))!.state,
+          DownloadState.pendingDeletion,
+        );
+        engine.stopGate!.complete();
+        await removal;
+        expect(await managed.findBySongId(song.id), isNull);
+        expect(await files.exists(path), isFalse);
+        expect(container.read(playerControllerProvider).tracks, isEmpty);
+      } finally {
+        if (engine.stopGate != null && !engine.stopGate!.isCompleted) {
+          engine.stopGate!.complete();
+        }
+        container.dispose();
+        await managed.dispose();
+      }
+    },
+  );
 
   test(
     'Commons catalog to Search action downloads HTTP bytes and keeps credits',
@@ -186,6 +264,24 @@ void main() {
         repository.enqueue(song),
         throwsA(isA<RepositoryException>()),
       );
+    },
+  );
+
+  test(
+    'rechaza contenido alterado aunque longitud y contenedor sean válidos',
+    () async {
+      source = (_) async => DownloadInput(
+        Stream.value(wavFixture()),
+        totalBytes: 48,
+        expectedSha1: '0000000000000000000000000000000000000000',
+      );
+      await expectLater(
+        repository.enqueue(song),
+        throwsA(isA<RepositoryException>()),
+      );
+      final record = await repository.findBySongId(song.id);
+      expect(record?.state, DownloadState.failed);
+      expect(record?.localPath, isNull);
     },
   );
 

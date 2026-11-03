@@ -18,18 +18,7 @@ OpenDownload createOpenDownload(Ref ref) {
   final resolver = CommonsAudioResolver(ref.watch(commonsApiClientProvider));
   return HttpAudioDownloader((song) async {
     final audio = await resolver.resolve(song);
-    final credits = audio.attribution;
-    await (await ref.read(songDaoProvider.future)).upsert(
-      Song.fromMap({
-        ...song.toMap(),
-        'title': credits.title,
-        'artist': credits.creator,
-        'license': credits.licenseName,
-        'license_url': credits.licenseUrl.toString(),
-        'attribution': credits.credit,
-        'source_url': credits.sourcePageUrl.toString(),
-      }),
-    );
+    await (await ref.read(songDaoProvider.future)).upsert(audio.song);
     return PermittedAudio(
       audio.uri,
       downloadAllowed: audio.downloadAllowed,
@@ -50,9 +39,12 @@ Future<DownloadSession> createSession(Ref ref) async {
   final canDelete = ref.watch(canDeleteAudioProvider);
   final database = await ref.watch(soundwaveDatabaseProvider.future);
   final directory = await getApplicationSupportDirectory();
+  final files = LocalAudioFileStore(
+    Directory(p.join(directory.path, 'downloads')),
+  );
   final repository = SqliteDownloadRepository(
     database: database,
-    files: LocalAudioFileStore(Directory(p.join(directory.path, 'downloads'))),
+    files: files,
     openDownload: open,
     canDelete: canDelete,
   );
@@ -78,5 +70,16 @@ Future<DownloadSession> createSession(Ref ref) async {
       }
     });
   }
-  return DownloadSession(repository, repository.songs.findById);
+  return DownloadSession(
+    repository,
+    repository.songs.findById,
+    localAudioUri: (path) async {
+      if (!await files.exists(path)) {
+        throw StateError(
+          'El archivo descargado ya no existe. Vuelve a descargarlo.',
+        );
+      }
+      return File(files.resolve(path)).uri;
+    },
+  );
 }
