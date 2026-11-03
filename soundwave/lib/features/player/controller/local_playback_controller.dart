@@ -1,174 +1,85 @@
 import 'dart:async';
-import '../models/player_track.dart';
 
-abstract class PlaybackController {
-  Future<void> load(List<PlayerTrack> tracks);
-  Future<void> play();
-  Future<void> pause();
-  Future<void> stop();
-  Future<void> seek(Duration position);
-  Future<void> seekTo(int index);
-  Stream<PlaybackEvent> get events;
-  void dispose();
-}
+import 'package:just_audio/just_audio.dart' hide PlaybackEvent;
 
-class PlaybackEvent {
-  const PlaybackEvent({
-    required this.position,
-    required this.duration,
-    required this.isPlaying,
-    this.index,
-    this.error,
-  });
+import '../../../core/contracts/playback_controller.dart';
+export '../../../core/contracts/playback_controller.dart';
 
-  final Duration position;
-  final Duration duration;
-  final bool isPlaying;
-  final int? index;
-  final String? error;
-}
-
+/// One decoder, owned by the root Riverpod provider, never by a screen.
 class LocalPlaybackController implements PlaybackController {
-  final _controller = StreamController<PlaybackEvent>.broadcast();
-  List<PlayerTrack> _tracks = const [];
-  int _index = 0;
-  bool _playing = false;
-  Duration _position = Duration.zero;
-  Timer? _timer;
+  final AudioPlayer _player = AudioPlayer(
+    userAgent:
+        'SoundWave-Academic/0.1 '
+        '(https://github.com/BaquiaxAntonio/pdm2026d-equipo-03-soundwave)',
+    useProxyForRequestHeaders: false,
+  );
+  final _events = StreamController<PlaybackEvent>.broadcast();
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
+  bool _disposed = false;
 
-  @override
-  Future<void> load(List<PlayerTrack> tracks) async {
-    _tracks = tracks;
-    _index = 0;
-    _position = Duration.zero;
-    _emit();
+  LocalPlaybackController() {
+    _subscriptions.addAll([
+      _player.positionStream.listen((_) => _emit()),
+      _player.durationStream.listen((_) => _emit()),
+      _player.playerStateStream.listen((_) => _emit()),
+      _player.errorStream.listen(
+        (_) => _emit(
+          error:
+              'No se pudo leer el audio. Comprueba el archivo o la conexión.',
+        ),
+      ),
+    ]);
   }
 
   @override
-  Future<void> play() async {
-    if (_tracks.isEmpty) return;
-    _playing = true;
-    _startTimer();
-    _emit();
-  }
+  Stream<PlaybackEvent> get events => _events.stream;
 
-  @override
-  Future<void> pause() async {
-    _playing = false;
-    _timer?.cancel();
-    _emit();
-  }
-
-  @override
-  Future<void> stop() async {
-    _playing = false;
-    _timer?.cancel();
-    _position = Duration.zero;
-    _emit();
-  }
-
-  @override
-  Future<void> seek(Duration position) async {
-    final track = _currentTrack;
-    if (track == null) return;
-    if (position < Duration.zero) {
-      _position = Duration.zero;
-    } else if (position > track.duration) {
-      _position = track.duration;
-    } else {
-      _position = position;
-    }
-    _emit();
-  }
-
-  @override
-  Future<void> seekTo(int index) async {
-    if (_tracks.isEmpty) return;
-    _index = index.clamp(0, _tracks.length - 1);
-    _position = Duration.zero;
-    _emit();
-  }
-
-  @override
-  Stream<PlaybackEvent> get events => _controller.stream;
-
-  PlayerTrack? get _currentTrack => _tracks.isEmpty ? null : _tracks[_index];
-
-  void _startTimer() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      if (!_playing) return;
-      final track = _currentTrack;
-      if (track == null) return;
-      _position += const Duration(milliseconds: 500);
-      if (_position >= track.duration) {
-        _position = track.duration;
-        _playing = false;
-        _timer?.cancel();
-      }
-      _emit();
-    });
-  }
-
-  void _emit() {
-    final track = _currentTrack;
-    _controller.add(
+  void _emit({String? error}) {
+    if (_disposed) return;
+    final processing = _player.processingState;
+    _events.add(
       PlaybackEvent(
-        position: _position,
-        duration: track?.duration ?? Duration.zero,
-        isPlaying: _playing,
-        index: _tracks.isEmpty ? null : _index,
+        position: _player.position,
+        duration: _player.duration ?? Duration.zero,
+        isPlaying: _player.playing && processing != ProcessingState.completed,
+        isLoading:
+            processing == ProcessingState.loading ||
+            processing == ProcessingState.buffering,
+        completed: processing == ProcessingState.completed,
+        error: error,
       ),
     );
   }
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    _controller.close();
+  Future<void> load(Uri uri) async {
+    await _player.setAudioSource(AudioSource.uri(uri));
   }
-}
 
-class PlayerState {
-  const PlayerState({
-    required this.tracks,
-    required this.index,
-    required this.position,
-    required this.isPlaying,
-    this.controller,
-  });
-
-  final List<PlayerTrack> tracks;
-  final int index;
-  final Duration position;
-  final bool isPlaying;
-  final LocalPlaybackController? controller;
-
-  factory PlayerState.initial() => const PlayerState(
-    tracks: [],
-    index: 0,
-    position: Duration.zero,
-    isPlaying: false,
-  );
-
-  PlayerState copyWith({
-    List<PlayerTrack>? tracks,
-    int? index,
-    Duration? position,
-    bool? isPlaying,
-    LocalPlaybackController? controller,
-  }) {
-    return PlayerState(
-      tracks: tracks ?? this.tracks,
-      index: index ?? this.index,
-      position: position ?? this.position,
-      isPlaying: isPlaying ?? this.isPlaying,
-      controller: controller ?? this.controller,
+  @override
+  Future<void> play() async {
+    // just_audio's play future completes at pause/end, not at playback start.
+    unawaited(
+      _player.play().catchError((Object _) {
+        _emit(error: 'No se pudo reproducir el audio. Intenta de nuevo.');
+      }),
     );
   }
 
-  PlayerState stop() {
-    controller?.stop();
-    return copyWith(isPlaying: false, position: Duration.zero);
+  @override
+  Future<void> pause() => _player.pause();
+  @override
+  Future<void> stop() => _player.stop();
+  @override
+  Future<void> seek(Duration position) => _player.seek(position);
+
+  @override
+  Future<void> dispose() async {
+    _disposed = true;
+    for (final subscription in _subscriptions) {
+      await subscription.cancel();
+    }
+    await _player.dispose();
+    await _events.close();
   }
 }

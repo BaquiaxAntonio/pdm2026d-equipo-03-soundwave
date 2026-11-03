@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
+import 'package:crypto/crypto.dart';
 
 import '../../../core/contracts/audio_file_store.dart';
 import '../../../core/contracts/download_repository.dart';
@@ -197,6 +198,14 @@ class SqliteDownloadRepository implements DownloadRepository {
         throw const RepositoryException(
           RepositoryErrorCode.invalidData,
           'Audio transfer is empty or incomplete.',
+        );
+      }
+      if (input.expectedSha1 != null &&
+          (await sha1.bind(File(temporary).openRead()).first).toString() !=
+              input.expectedSha1) {
+        throw const RepositoryException(
+          RepositoryErrorCode.invalidData,
+          'El audio recibido no coincide con el archivo del proveedor.',
         );
       }
       final relative = await files.commit(temporary, song.id);

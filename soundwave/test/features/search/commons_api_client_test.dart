@@ -39,7 +39,7 @@ void main() {
     );
     expect(
       transport.lastUri?.queryParameters,
-      containsPair('gsrsearch', 'Noxville'),
+      containsPair('gsrsearch', 'Noxville filetype:audio'),
     );
     expect(
       transport.lastUri?.queryParameters,
@@ -232,7 +232,7 @@ void main() {
     expect(transport.callCount, 0);
   });
 
-  test('resolver autoriza únicamente la muestra documentada vigente', () async {
+  test('resolver autoriza audio con licencia libre vigente', () async {
     final transport = FakeCommonsHttpTransport(
       (_) async => CommonsHttpResponse(statusCode: 200, body: realResponse),
     );
@@ -351,17 +351,15 @@ void main() {
     );
   });
 
-  test('MIME WAV no basta si la evidencia del archivo cambió', () async {
+  test('resolver exige un hash válido para verificar la descarga', () async {
     final resolver = CommonsAudioResolver(
-      _FakeCatalogSource(
-        item: _sampleItem(sha1: '0000000000000000000000000000000000000000'),
-      ),
+      _FakeCatalogSource(item: _sampleItem(sha1: 'invalid')),
     );
 
     await expectLater(
       resolver.resolve(_sampleSong),
       throwsA(
-        _resolutionFailure(CommonsAudioResolutionFailure.unsupportedAudio),
+        _resolutionFailure(CommonsAudioResolutionFailure.missingMetadata),
       ),
     );
   });
@@ -375,6 +373,62 @@ void main() {
     final resolver = CommonsAudioResolver(_FakeCatalogSource(error: apiError));
 
     await expectLater(resolver.resolve(_sampleSong), throwsA(same(apiError)));
+  });
+
+  test(
+    'autoriza un ID nuevo con Ogg libre, sin lista fija de canciones',
+    () async {
+      const song = Song(
+        id: 'wikimedia_commons:1234',
+        title: 'Música nueva',
+        artist: 'Autor libre',
+        provider: 'wikimedia_commons',
+        sourceId: '1234',
+      );
+      final resolver = CommonsAudioResolver(
+        _FakeCatalogSource(
+          item: _sampleItem(
+            song: song,
+            mediaUrl:
+                'https://upload.wikimedia.org/wikipedia/commons/a/ab/Libre.ogg',
+            mimeType: 'application/ogg',
+            licenseShortName: 'CC BY-SA 3.0',
+            licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0/',
+          ),
+        ),
+      );
+      final audio = await resolver.resolve(song);
+      expect(audio.downloadAllowed, isTrue);
+      expect(audio.song.id, song.id);
+      expect(audio.song.license, 'CC BY-SA 3.0');
+    },
+  );
+
+  test('rechaza licencia no libre y hosts de audio ajenos a Commons', () async {
+    final nonFree = CommonsAudioResolver(
+      _FakeCatalogSource(
+        item: _sampleItem(
+          licenseUrl: 'https://creativecommons.org/licenses/by-nc/4.0/',
+        ),
+      ),
+    );
+    await expectLater(
+      nonFree.resolve(_sampleSong),
+      throwsA(
+        _resolutionFailure(CommonsAudioResolutionFailure.permissionDenied),
+      ),
+    );
+    final otherHost = CommonsAudioResolver(
+      _FakeCatalogSource(
+        item: _sampleItem(
+          mediaUrl: 'https://example.com/wikipedia/commons/audio.ogg',
+        ),
+      ),
+    );
+    await expectLater(
+      otherHost.resolve(_sampleSong),
+      throwsA(_resolutionFailure(CommonsAudioResolutionFailure.invalidUrl)),
+    );
   });
 }
 

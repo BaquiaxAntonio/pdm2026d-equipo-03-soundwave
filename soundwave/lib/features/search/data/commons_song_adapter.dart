@@ -51,6 +51,7 @@ List<CommonsCatalogItem> parseCommonsCatalogResponse(Object? response) {
   final root = _asMap(response);
   final query = _asMap(root?['query']);
   final pages = query?['pages'];
+  if (query == null && root?['batchcomplete'] == true) return const [];
   if (pages is! List<Object?>) {
     throw const FormatException(
       'Commons response must contain query.pages as a list.',
@@ -190,7 +191,11 @@ String _normalizeTitle(String value) {
 }
 
 String _htmlToText(String html) {
-  var text = html.replaceAll(RegExp(r'<!--[\s\S]*?-->'), ' ');
+  var text = html.replaceAll(
+    RegExp(r'<(style|script)\b[^>]*>[\s\S]*?</\1>', caseSensitive: false),
+    ' ',
+  );
+  text = text.replaceAll(RegExp(r'<!--[\s\S]*?-->'), ' ');
   text = text.replaceAll(RegExp(r'<[^>]*>'), ' ');
   text = text.replaceAllMapped(RegExp(r'&([^;\s]+);'), (match) {
     final entity = match.group(1)!;

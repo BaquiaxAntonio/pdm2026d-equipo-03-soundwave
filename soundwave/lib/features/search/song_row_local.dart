@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/song.dart';
+import '../../app/song_selection.dart';
+import '../../core/providers/data_mode_provider.dart';
 import 'cover_placeholder_local.dart';
 import 'search_controller.dart';
 import 'search_theme_local.dart';
 
-// Fila limpia sin tarjeta: portada + centro flexible + duración.
-// Motivo: evita tarjeta-dentro-de-tarjeta y desbordes con títulos largos
-// o texto ampliado (Expanded + ellipsis). Sin onTap ni efecto ripple
-// porque la fila no reproduce ni navega todavía.
+// Flexible metadata with separate play/download actions and stable Song.id.
 class SongRowLocal extends ConsumerWidget {
   final Song song;
 
@@ -67,6 +66,13 @@ class SongRowLocal extends ConsumerWidget {
                 'Duración ${song.formattedDuration.replaceAll(':', ' minutos ')} segundos',
           ),
           const SizedBox(width: SearchThemeLocal.space4),
+          IconButton(
+            tooltip: 'Reproducir ${song.title}',
+            icon: const Icon(Icons.play_arrow),
+            onPressed: ref.watch(dataModeProvider) == DataMode.demo
+                ? null
+                : () => openSongInPlayer(ref, song.id),
+          ),
           _DownloadAction(song: song, state: download),
         ],
       ),

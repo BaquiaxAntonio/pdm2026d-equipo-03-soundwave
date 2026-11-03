@@ -81,6 +81,24 @@ void main() {
   );
 
   test(
+    'rechaza contenido alterado aunque longitud y contenedor sean válidos',
+    () async {
+      source = (_) async => DownloadInput(
+        Stream.value(wavFixture()),
+        totalBytes: 48,
+        expectedSha1: '0000000000000000000000000000000000000000',
+      );
+      await expectLater(
+        repository.enqueue(song),
+        throwsA(isA<RepositoryException>()),
+      );
+      final record = await repository.findBySongId(song.id);
+      expect(record?.state, DownloadState.failed);
+      expect(record?.localPath, isNull);
+    },
+  );
+
+  test(
     'prevents simultaneous duplicate transfers and emits real progress',
     () async {
       final bytes = StreamController<List<int>>();
