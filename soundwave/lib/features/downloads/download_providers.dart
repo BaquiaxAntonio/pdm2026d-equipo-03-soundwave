@@ -57,7 +57,7 @@ class DownloadFilterNotifier extends Notifier<DownloadFilter> {
 
 /// Reuse Search's reviewed Commons resolver on native platforms.
 final openDownloadProvider = Provider<OpenDownload>(
-  platform.createOpenDownload,
+  (ref) => platform.createOpenDownload(ref),
 );
 
 /// Safe default: retain pending files until the audio owner confirms release.

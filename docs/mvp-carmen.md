@@ -34,6 +34,20 @@ Contratos que requieren conciliación con Ramos al integrar #51:
 El PR de Descargas se presenta pendiente de conciliación con #51 y aceptación
 Android, con referencias a #7 y #31 sin cerrar automáticamente esos issues.
 
+La comprobación `git merge-tree --write-tree` (sin fusionar la rama) detectó
+conflictos de contenido en factory y providers. Se alinearon de forma segura
+el orden de imports y la composición del provider con #51. Permanece el punto
+de integración de créditos en `download_factory_native.dart`: main ofrece
+`audio.attribution`, mientras #51 añade `audio.song`. Ambos preservan créditos;
+al integrar #51 se debe usar su canción verificada conservando las protecciones
+de esta rama. No se puede consumir `audio.song` aquí antes de integrar ese
+contrato, por lo que se documenta el conflicto y se solicita revisión.
+
+Validación repetida antes de publicación: `flutter pub get`, formato y análisis
+aprobados; suite completa con 199 aprobadas, 2 omitidas y 0 fallidas. La prueba
+externa también se repitió: 2 aprobadas, incluidos los 647212 bytes de Commons,
+verificación SHA-1 y conservación de archivo/créditos después de reabrir SQLite.
+
 Esta sección sustituye el estado histórico de la matriz inferior. Alcance:
 Descargas de Carmen; sin CRUD de usuarios, cambios del motor de audio ni migraciones.
 

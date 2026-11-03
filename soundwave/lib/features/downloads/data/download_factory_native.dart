@@ -4,14 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../../core/database/soundwave_database.dart';
+import '../../../core/database/dao_providers.dart';
 import '../../../core/errors/repository_exception.dart';
 import '../../../core/models/song.dart';
-import '../../search/data/commons_api_client.dart';
-import '../../search/data/commons_catalog_repository.dart';
-import '../../../core/database/dao_providers.dart';
 import '../download_providers.dart';
 import 'local_audio_file_store.dart';
 import 'sqlite_download_repository.dart';
+import '../../search/data/commons_api_client.dart';
+import '../../search/data/commons_catalog_repository.dart';
 import 'http_audio_downloader.dart';
 
 OpenDownload createOpenDownload(Ref ref) {
