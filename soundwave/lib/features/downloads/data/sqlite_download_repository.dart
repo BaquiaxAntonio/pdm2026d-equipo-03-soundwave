@@ -116,7 +116,6 @@ class SqliteDownloadRepository implements DownloadRepository {
   Future<void> enqueue(Song song) async {
     if (!_busy.add(song.id)) throw _conflict();
     try {
-      await songs.upsert(song);
       final timestamp = now();
       final record = DownloadRecord(
         songId: song.id,
@@ -129,6 +128,15 @@ class SqliteDownloadRepository implements DownloadRepository {
         if (await DownloadDao(tx).findBySongId(song.id) != null) {
           throw _conflict();
         }
+        // SongDao owns a Database transaction, so use the current transaction
+        // here to atomically reserve the download without nested transactions.
+        final updated = await tx.update(
+          'songs',
+          song.toMap()..remove('id'),
+          where: 'id = ?',
+          whereArgs: [song.id],
+        );
+        if (updated == 0) await tx.insert('songs', song.toMap());
         await DownloadDao(tx).upsert(record);
       });
       _changes.add(null);
@@ -173,6 +181,7 @@ class SqliteDownloadRepository implements DownloadRepository {
         );
     await _save(record(DownloadState.downloading));
     DownloadInput? input;
+    String? temporary;
     try {
       input = await openDownload(song);
       if (input.totalBytes != null && input.totalBytes! < 0) {
@@ -182,7 +191,7 @@ class SqliteDownloadRepository implements DownloadRepository {
         );
       }
       total = input.totalBytes;
-      final temporary = await files.createTemporaryPath(song.id);
+      temporary = await files.createTemporaryPath(song.id);
       final output = await File(temporary).open(mode: FileMode.write);
       try {
         await for (final chunk in input.bytes) {
@@ -215,6 +224,14 @@ class SqliteDownloadRepository implements DownloadRepository {
       rethrow;
     } finally {
       input?.close?.call();
+      if (temporary != null) {
+        try {
+          final partial = File(temporary);
+          if (await partial.exists()) await partial.delete();
+        } on FileSystemException {
+          // Startup reconciliation retries cleanup if storage is unavailable.
+        }
+      }
     }
   }
 

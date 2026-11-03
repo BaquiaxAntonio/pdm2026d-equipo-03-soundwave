@@ -74,13 +74,12 @@ Future<DownloadSession> createSession(Ref ref) async {
     repository,
     repository.songs.findById,
     localAudioUri: (path) async {
-      final file = File(files.resolve(path));
-      if (!await file.exists()) {
+      if (!await files.exists(path)) {
         throw StateError(
           'El archivo descargado ya no existe. Vuelve a descargarlo.',
         );
       }
-      return file.uri;
+      return File(files.resolve(path)).uri;
     },
   );
 }

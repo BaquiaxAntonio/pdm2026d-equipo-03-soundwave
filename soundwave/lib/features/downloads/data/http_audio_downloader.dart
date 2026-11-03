@@ -3,6 +3,7 @@ import 'dart:io';
 import '../../../core/errors/repository_exception.dart';
 import '../../../core/models/song.dart';
 import 'download_input.dart';
+import '../../search/data/commons_api_client.dart' show commonsUserAgent;
 
 class PermittedAudio {
   const PermittedAudio(
@@ -44,13 +45,10 @@ class HttpAudioDownloader {
     final client = HttpClient()..connectionTimeout = timeout;
     try {
       final request = await client.getUrl(audio.uri).timeout(timeout);
-      request.headers.set(
-        HttpHeaders.userAgentHeader,
-        'SoundWave-Academic/0.1 (https://github.com/BaquiaxAntonio/pdm2026d-equipo-03-soundwave)',
-      );
       // Resolve redirects through the provider adapter, preserving its permission
       // and scheme checks instead of silently following an unverified location.
       request.followRedirects = false;
+      request.headers.set(HttpHeaders.userAgentHeader, commonsUserAgent);
       final response = await request.close().timeout(timeout);
       if (response.statusCode != HttpStatus.ok) {
         throw RepositoryException(
@@ -69,6 +67,14 @@ class HttpAudioDownloader {
         throw const RepositoryException(
           RepositoryErrorCode.invalidData,
           'Unsupported audio response.',
+        );
+      }
+      if (audio.size != null &&
+          response.contentLength >= 0 &&
+          audio.size != response.contentLength) {
+        throw const RepositoryException(
+          RepositoryErrorCode.invalidData,
+          'Audio length differs from provider metadata.',
         );
       }
       Stream<List<int>> bytes() async* {

@@ -4,6 +4,8 @@ import '../../../core/models/song.dart';
 import '../download_providers.dart';
 import 'download_input.dart';
 
+OpenDownload createOpenDownload(Ref ref) => unavailable;
+
 Future<DownloadInput> unavailable(Song song) async =>
     throw const RepositoryException(
       RepositoryErrorCode.network,
@@ -12,5 +14,3 @@ Future<DownloadInput> unavailable(Song song) async =>
 
 Future<DownloadSession> createSession(Ref ref) async =>
     throw UnsupportedError('Use demo mode on Web.');
-
-OpenDownload createOpenDownload(Ref ref) => unavailable;

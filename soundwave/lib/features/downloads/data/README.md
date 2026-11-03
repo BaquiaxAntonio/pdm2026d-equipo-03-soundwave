@@ -9,18 +9,22 @@ con la demo explícita. No se modificó el esquema ni se añadió otro catálogo
 - `downloadSessionProvider` es el punto único de acceso al repositorio y a las
   canciones canónicas. Inicio, búsqueda y player pueden consumir
   `downloadEntriesProvider` o `repository.watchDownloads()` sin recargar la app.
-- El propietario de API debe sobrescribir `openDownloadProvider` con
-  `HttpAudioDownloader(resolvePermittedAudio).open` o un adaptador compatible.
-  El resolver recibe `Song` y devuelve `PermittedAudio` con URL vigente y permiso
-  explícito. No hay endpoints, tokens ni proveedor ficticio en producción.
+- `openDownloadProvider` usa en nativo el `CommonsAudioResolver` existente de
+  Búsqueda y `HttpAudioDownloader`, conservando los créditos vigentes en SQLite.
+  Usa la canción verificada `audio.song` del contrato integrado por #51;
+  un resultado de búsqueda por sí solo no autoriza su descarga. El resolver
+  comprueba identidad, metadatos actuales, licencia y URL Commons. Web conserva
+  la demo.
 - El transporte valida permiso, HTTPS, HTTP 200, MIME, timeout y longitud.
   Las redirecciones se resuelven por el adaptador para revalidar el destino.
-- Hasta acordar formatos con la API, se acepta únicamente WAV PCM canónico,
-  validando cabecera, tamaños, canales, frecuencia y alineación. Otros formatos
-  fallan como no disponibles; no se presentan bytes arbitrarios como audio.
-- El propietario del motor debe sobrescribir `canDeleteAudioProvider`: devuelve
-  true solo después de soltar la pista. Sin coordinador, el valor seguro es false
-  y el registro/archivo se conserva pendiente, incluso tras vencer Deshacer.
+  Incluye User-Agent y compara el tamaño del proveedor. Antes de confirmar el
+  archivo se verifica su SHA-1 cuando el proveedor lo suministra.
+- Se conservan los formatos WAV y Ogg integrados por #51 y su validación de
+  contenedor. La ruta local se valida de nuevo antes de entregarse al reproductor.
+- La composición de `main.dart` conecta `canDeleteAudioProvider` con la guarda de
+  Ramos: solo permite borrar después de `releaseForDeletion`. La prueba integral
+  comprueba que un archivo pausado se conserva mientras `stop()` no termina.
+  Sin coordinador, el valor seguro sigue siendo false y el archivo se retiene.
 - `downloadUndoDurationProvider` es configurable; 4 segundos coincide con el
   SnackBar existente. Es un valor reversible de interfaz, no política definitiva.
 
@@ -30,6 +34,9 @@ Los datos se escriben antes de notificar. Se guarda primero un temporal `.part`,
 se valida y confirma el archivo, y finalmente SQLite registra `completed` y la
 pertenencia a la colección offline. Los fallos no tienen ruta disponible.
 Se rechazan duplicados y el reintento empieza desde cero.
+El rechazo de duplicados conserva los metadatos existentes. Los temporales
+se limpian al terminar o fallar; si el almacenamiento impide borrarlos, la
+reconciliación del siguiente inicio vuelve a intentarlo.
 
 Al iniciar se recuperan transferencias interrumpidas como fallidas, se detectan
 archivos ausentes/corruptos y se reconcilian temporales y archivos huérfanos
