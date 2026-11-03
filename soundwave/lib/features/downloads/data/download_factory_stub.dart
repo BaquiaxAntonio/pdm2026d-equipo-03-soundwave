@@ -12,3 +12,5 @@ Future<DownloadInput> unavailable(Song song) async =>
 
 Future<DownloadSession> createSession(Ref ref) async =>
     throw UnsupportedError('Use demo mode on Web.');
+
+OpenDownload createOpenDownload(Ref ref) => unavailable;

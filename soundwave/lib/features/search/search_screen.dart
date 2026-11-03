@@ -61,7 +61,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ),
                           const SizedBox(height: SearchThemeLocal.space4),
                           const Text(
-                            'Encuentra tu próximo favorito',
+                            'Música libre de Commons · WAV y Ogg',
                             style: SearchThemeLocal.artist,
                           ),
                           if (search.isDemo) ...[

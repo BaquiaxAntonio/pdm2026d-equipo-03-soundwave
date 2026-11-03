@@ -1,35 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'player_provider.dart';
 
 class PlayerDeletionGuard {
   PlayerDeletionGuard(this._ref);
-
   final Ref _ref;
 
-  Future<bool> canDelete(String songId) async {
-    final state = _ref.read(playerControllerProvider);
-    if (state.isPlaying && state.tracks.isNotEmpty) {
-      final current = state.tracks[state.index];
-      if (current.id == songId) {
-        return false;
-      }
-    }
-    return true;
-  }
+  Future<bool> canDelete(String songId) =>
+      _ref.read(playerControllerProvider.notifier).releaseForDeletion(songId);
 
   Future<void> ensureReleased(String songId) async {
-    final state = _ref.read(playerControllerProvider);
-    if (state.tracks.isNotEmpty) {
-      final current = state.tracks[state.index];
-      if (current.id == songId && state.isPlaying) {
-        final notifier = _ref.read(playerControllerProvider.notifier);
-        await notifier.pause();
-      }
-    }
+    await canDelete(songId);
   }
 }
 
-final playerDeletionGuardProvider = Provider<PlayerDeletionGuard>((ref) {
-  return PlayerDeletionGuard(ref);
-});
+final playerDeletionGuardProvider = Provider<PlayerDeletionGuard>(
+  PlayerDeletionGuard.new,
+);

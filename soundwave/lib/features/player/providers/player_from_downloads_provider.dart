@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/models/download_record.dart';
 import '../../downloads/download_providers.dart';
@@ -6,6 +7,7 @@ import '../models/player_track.dart';
 import 'player_provider.dart';
 
 final playerFromDownloadsProvider = Provider<void>((ref) {
+  List<(String, String?)>? previousFiles;
   ref.listen<AsyncValue<List<DownloadEntry>>>(downloadEntriesProvider, (
     previous,
     next,
@@ -19,7 +21,12 @@ final playerFromDownloadsProvider = Provider<void>((ref) {
           tracks.add(PlayerTrack.fromDownload(entry.song!, entry.record));
         }
       }
+      final files = tracks.map((track) => (track.id, track.localPath)).toList();
+      final previous = previousFiles;
+      // Byte-progress events must not enqueue hundreds of redundant reloads.
+      if (listEquals(previous, files)) return;
+      previousFiles = files;
       ref.read(playerControllerProvider.notifier).load(tracks);
     });
-  });
+  }, fireImmediately: true);
 });

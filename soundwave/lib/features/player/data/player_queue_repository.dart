@@ -22,34 +22,9 @@ class SqlitePlayerQueueRepository implements PlayerQueueRepository {
   SqlitePlayerQueueRepository(this.database);
 
   final Database database;
-  static const collectionId = 'player-lab-queue';
+  static const collectionId = 'offline';
 
-  Future<void> initialize() => database.transaction((tx) async {
-    final existing = await tx.query(
-      'playlists',
-      where: 'id = ?',
-      whereArgs: [collectionId],
-    );
-    if (existing.isNotEmpty) return;
-    await PlaylistDao(
-      tx,
-    ).create(id: collectionId, name: 'Cola de reproducción');
-    for (var index = 0; index < mockPlayerSongs.length; index++) {
-      final song = mockPlayerSongs[index];
-      final id = 'player-demo:${song.id}';
-      await tx.insert('songs', {
-        'id': id,
-        'provider': 'player-demo',
-        'source_id': song.id,
-        'title': song.title,
-        'artist': song.artist,
-        'duration_ms': song.durationSeconds * 1000,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
-      await PlaylistDao(
-        tx,
-      ).addSong(playlistId: collectionId, songId: id, position: index);
-    }
-  });
+  Future<void> initialize() => PlaylistDao(database).ensureOfflineCollection();
 
   @override
   Future<List<PlayerQueueEntry>> list(PlayerQueueFilter filter) async {
@@ -57,7 +32,8 @@ class SqlitePlayerQueueRepository implements PlayerQueueRepository {
       '''
       SELECT s.*, p.position FROM playlist_songs p
       JOIN songs s ON s.id = p.song_id
-      WHERE p.playlist_id = ? ORDER BY p.position
+      JOIN downloads d ON d.song_id = s.id
+      WHERE p.playlist_id = ? AND d.state = 'completed' ORDER BY p.position
     ''',
       [collectionId],
     );
@@ -67,7 +43,7 @@ class SqlitePlayerQueueRepository implements PlayerQueueRepository {
           id: row['id']! as String,
           title: row['title']! as String,
           artist: row['artist']! as String,
-          durationSeconds: (row['duration_ms']! as int) ~/ 1000,
+          durationSeconds: ((row['duration_ms'] as int?) ?? 0) ~/ 1000,
         ),
         position: row['position']! as int,
       ),

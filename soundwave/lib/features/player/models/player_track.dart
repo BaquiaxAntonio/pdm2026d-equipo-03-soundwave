@@ -21,7 +21,5 @@ class PlayerTrack {
   String get id => song.id;
   String get title => song.title;
   String get artist => song.artist;
-  Duration get duration => song.durationMs == null
-      ? const Duration(minutes: 3)
-      : Duration(milliseconds: song.durationMs!);
+  Duration get duration => Duration(milliseconds: song.durationMs ?? 0);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/navigation_provider.dart';
+import '../../app/song_selection.dart';
 import '../../core/models/download_record.dart';
 import 'download_cover.dart';
 import 'download_providers.dart';
@@ -269,6 +270,17 @@ class RepositoryDownloadView extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
+                                if (entry.record.state ==
+                                        DownloadState.completed &&
+                                    entry.song != null)
+                                  IconButton(
+                                    tooltip: 'Reproducir ${entry.song!.title}',
+                                    icon: const Icon(Icons.play_arrow),
+                                    onPressed: () => openSongInPlayer(
+                                      ref,
+                                      entry.record.songId,
+                                    ),
+                                  ),
                                 if ([
                                   DownloadState.completed,
                                   DownloadState.failed,
