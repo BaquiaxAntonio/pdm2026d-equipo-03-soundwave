@@ -30,6 +30,10 @@ void main() {
     'streams controlled HTTP audio with length and no external provider',
     () async {
       server.listen((request) async {
+        expect(
+          request.headers.value(HttpHeaders.userAgentHeader),
+          contains('SoundWave-Academic'),
+        );
         request.response.headers.contentType = ContentType('audio', 'wav');
         request.response.contentLength = 48;
         request.response.add(wavFixture());
@@ -50,6 +54,42 @@ void main() {
       downloader().open(song),
       throwsA(isA<RepositoryException>()),
     );
+  });
+
+  test('rejects redirects without contacting an unverified target', () async {
+    server.listen((request) async {
+      request.response.statusCode = 302;
+      request.response.headers.set(
+        HttpHeaders.locationHeader,
+        'https://example.com/audio',
+      );
+      await request.response.close();
+    });
+    await expectLater(
+      downloader().open(song),
+      throwsA(isA<RepositoryException>()),
+    );
+  });
+
+  test('provider size overrides unknown length and carries checksum', () async {
+    server.listen((request) async {
+      request.response.headers.contentType = ContentType('audio', 'wav');
+      request.response.add(wavFixture());
+      await request.response.close();
+    });
+    final client = HttpAudioDownloader(
+      (_) async => PermittedAudio(
+        Uri.parse('http://127.0.0.1:${server.port}/audio'),
+        downloadAllowed: true,
+        size: 48,
+        sha1: 'reviewed-digest',
+      ),
+      allowLocalHttp: true,
+    );
+    final input = await client.open(song);
+    expect(input.totalBytes, 48);
+    expect(input.expectedSha1, 'reviewed-digest');
+    expect(await input.bytes.expand((b) => b).toList(), wavFixture());
   });
 
   test('rejects HTML instead of audio', () async {

@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/core/database/download_dao.dart';
@@ -7,8 +10,13 @@ import 'package:soundwave/core/database/schema.dart';
 import 'package:soundwave/core/errors/repository_exception.dart';
 import 'package:soundwave/core/models/download_record.dart';
 import 'package:soundwave/core/models/song.dart';
+import 'package:soundwave/core/providers/data_mode_provider.dart';
 import 'package:soundwave/features/downloads/data/local_audio_file_store.dart';
 import 'package:soundwave/features/downloads/data/sqlite_download_repository.dart';
+import 'package:soundwave/features/downloads/data/http_audio_downloader.dart';
+import 'package:soundwave/features/downloads/download_providers.dart';
+import 'package:soundwave/features/search/search_controller.dart';
+import 'package:soundwave/features/search/data/commons_song_adapter.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'audio_fixture.dart';
 
@@ -50,6 +58,107 @@ void main() {
   tearDown(() async {
     await repository.dispose();
     await database.close();
+  });
+
+  test(
+    'Commons catalog to Search action downloads HTTP bytes and keeps credits',
+    () async {
+      final fixture = jsonDecode(
+        await File(
+          'test/features/search/fixtures/welcome_to_noxville_response.json',
+        ).readAsString(),
+      );
+      final catalogSong = parseCommonsCatalogResponse(fixture).single.song;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((request) async {
+        request.response.headers.contentType = ContentType('audio', 'wav');
+        request.response.contentLength = 48;
+        request.response.add(wavFixture());
+        await request.response.close();
+      });
+      final downloader = HttpAudioDownloader((requested) async {
+        expect(requested.id, catalogSong.id);
+        return PermittedAudio(
+          Uri.parse('http://127.0.0.1:${server.port}/audio'),
+          downloadAllowed: true,
+          size: 48,
+          sha1: sha1.convert(wavFixture()).toString(),
+        );
+      }, allowLocalHttp: true);
+      source = downloader.open;
+      final container = ProviderContainer(
+        overrides: [
+          dataModeProvider.overrideWithValue(DataMode.localSqlite),
+          downloadSessionProvider.overrideWith(
+            (ref) async =>
+                DownloadSession(repository, repository.songs.findById),
+          ),
+        ],
+      );
+      try {
+        final result = await container
+            .read(searchDownloadControllerProvider.notifier)
+            .request(catalogSong);
+        expect(result.outcome, SearchDownloadRequestOutcome.requested);
+        final saved = (await repository.findBySongId(catalogSong.id))!;
+        expect(saved.state, DownloadState.completed);
+        expect(await files.exists(saved.localPath!), isTrue);
+        final persisted = (await repository.songs.findById(catalogSong.id))!;
+        expect(persisted.license, catalogSong.license);
+        expect(persisted.attribution, catalogSong.attribution);
+        expect(persisted.sourceUrl, catalogSong.sourceUrl);
+        expect(
+          (await container
+                  .read(searchDownloadControllerProvider.notifier)
+                  .request(catalogSong))
+              .outcome,
+          SearchDownloadRequestOutcome.alreadyPresent,
+        );
+      } finally {
+        container.dispose();
+        await server.close(force: true);
+      }
+    },
+  );
+
+  test('duplicate request cannot replace persisted credits', () async {
+    final credited = Song.fromMap({...song.toMap(), 'license': 'CC BY 4.0'});
+    await repository.enqueue(credited);
+    await expectLater(
+      repository.enqueue(song),
+      throwsA(isA<RepositoryException>()),
+    );
+    expect((await repository.songs.findById(song.id))!.license, 'CC BY 4.0');
+  });
+
+  test('checksum mismatch fails and removes partial before retry', () async {
+    source = (_) async => DownloadInput(
+      Stream.value(wavFixture()),
+      totalBytes: 48,
+      expectedSha1: '0' * 40,
+    );
+    await expectLater(
+      repository.enqueue(song),
+      throwsA(isA<RepositoryException>()),
+    );
+    expect(
+      (await repository.findBySongId(song.id))!.state,
+      DownloadState.failed,
+    );
+    final partials = await Directory(
+      files.resolve('.part'),
+    ).list(recursive: true).where((e) => e is File).toList();
+    expect(partials, isEmpty);
+    source = (_) async => DownloadInput(
+      Stream.value(wavFixture()),
+      totalBytes: 48,
+      expectedSha1: sha1.convert(wavFixture()).toString(),
+    );
+    await repository.retry(song.id);
+    expect(
+      (await repository.findBySongId(song.id))!.state,
+      DownloadState.completed,
+    );
   });
 
   test(

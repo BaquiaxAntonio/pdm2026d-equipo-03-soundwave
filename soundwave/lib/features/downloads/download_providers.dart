@@ -55,9 +55,9 @@ class DownloadFilterNotifier extends Notifier<DownloadFilter> {
   void showCompleted() => state = state.copyWith(completedOnly: true);
 }
 
-/// API/search supplies the resolver when a permitted provider is agreed.
+/// Reuse Search's reviewed Commons resolver on native platforms.
 final openDownloadProvider = Provider<OpenDownload>(
-  (ref) => platform.unavailable,
+  platform.createOpenDownload,
 );
 
 /// Safe default: retain pending files until the audio owner confirms release.

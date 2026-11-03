@@ -6,9 +6,38 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/database/soundwave_database.dart';
 import '../../../core/errors/repository_exception.dart';
 import '../../../core/models/song.dart';
+import '../../search/data/commons_api_client.dart';
+import '../../search/data/commons_catalog_repository.dart';
+import '../../../core/database/dao_providers.dart';
 import '../download_providers.dart';
 import 'local_audio_file_store.dart';
 import 'sqlite_download_repository.dart';
+import 'http_audio_downloader.dart';
+
+OpenDownload createOpenDownload(Ref ref) {
+  final resolver = CommonsAudioResolver(ref.watch(commonsApiClientProvider));
+  return HttpAudioDownloader((song) async {
+    final audio = await resolver.resolve(song);
+    final credits = audio.attribution;
+    await (await ref.read(songDaoProvider.future)).upsert(
+      Song.fromMap({
+        ...song.toMap(),
+        'title': credits.title,
+        'artist': credits.creator,
+        'license': credits.licenseName,
+        'license_url': credits.licenseUrl.toString(),
+        'attribution': credits.credit,
+        'source_url': credits.sourcePageUrl.toString(),
+      }),
+    );
+    return PermittedAudio(
+      audio.uri,
+      downloadAllowed: audio.downloadAllowed,
+      sha1: audio.sha1,
+      size: audio.fileSizeBytes,
+    );
+  }).open;
+}
 
 Future<DownloadInput> unavailable(Song song) async =>
     throw const RepositoryException(
