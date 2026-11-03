@@ -12,6 +12,9 @@ import 'package:soundwave/core/models/download_record.dart';
 import 'package:soundwave/core/models/app_user.dart';
 import 'package:soundwave/core/models/song.dart';
 import 'package:soundwave/features/player/data/player_playlist_repository.dart';
+import 'package:soundwave/features/search/data/commons_api_client.dart';
+import 'package:soundwave/features/search/data/commons_catalog_repository.dart';
+import 'package:soundwave/features/search/data/commons_song_adapter.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -54,6 +57,34 @@ void main() {
     expect((await songs.findById(song.id))?.durationMs, 205000);
     expect((await songs.search('soundwaves')).single.id, song.id);
     expect((await songs.search('no match')), isEmpty);
+  });
+
+  test('persiste metadatos Commons sin alterar la canción', () async {
+    final item = parseCommonsCatalogResponse(_commonsResponse()).single;
+    final repository = CommonsCatalogRepository(
+      remote: _StaticCommonsCatalogSource(item),
+      store: SongDaoCatalogStore(songs),
+    );
+
+    final outcome = await repository.searchWithContext('Noxville');
+    final stored = await songs.findById(item.song.id);
+
+    expect(outcome.songs.single.id, item.song.id);
+    expect(stored, isNotNull);
+    expect(stored?.id, 'wikimedia_commons:157450501');
+    expect(stored?.provider, 'wikimedia_commons');
+    expect(stored?.sourceId, '157450501');
+    expect(stored?.title, 'Welcome to Noxville');
+    expect(stored?.artist, 'Sir Goose of Honker');
+    expect(stored?.durationMs, 6741);
+    expect(stored?.artworkUrl, isNull);
+    expect(stored?.license, 'CC BY 4.0');
+    expect(stored?.licenseUrl, 'https://creativecommons.org/licenses/by/4.0');
+    expect(stored?.attribution, 'Own work');
+    expect(
+      stored?.sourceUrl,
+      'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav',
+    );
   });
 
   test('reopens a file database without losing its songs', () async {
@@ -302,4 +333,44 @@ void main() {
       expect(await dao.all(), isEmpty);
     },
   );
+}
+
+Map<String, Object?> _commonsResponse() => {
+  'query': {
+    'pages': [
+      {
+        'pageid': 157450501,
+        'title': 'File:Welcome to Noxville.wav',
+        'imageinfo': [
+          {
+            'duration': 6.741333333333333,
+            'descriptionurl':
+                'https://commons.wikimedia.org/wiki/'
+                'File:Welcome_to_Noxville.wav',
+            'extmetadata': {
+              'Artist': {'value': '<b>Sir Goose of Honker</b>'},
+              'Credit': {'value': '<span>Own work</span>'},
+              'LicenseShortName': {'value': 'CC BY 4.0'},
+              'LicenseUrl': {
+                'value': 'https://creativecommons.org/licenses/by/4.0',
+              },
+            },
+          },
+        ],
+      },
+    ],
+  },
+};
+
+class _StaticCommonsCatalogSource implements CommonsCatalogSource {
+  const _StaticCommonsCatalogSource(this.item);
+
+  final CommonsCatalogItem item;
+
+  @override
+  Future<CommonsCatalogItem?> findByPageId(String pageId) async =>
+      pageId == item.song.sourceId ? item : null;
+
+  @override
+  Future<List<CommonsCatalogItem>> search(String query) async => [item];
 }

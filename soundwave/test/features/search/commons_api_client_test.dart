@@ -273,6 +273,19 @@ void main() {
     );
   });
 
+  test('resolver rechaza la ausencia de una página de origen real', () async {
+    final resolver = CommonsAudioResolver(
+      _FakeCatalogSource(item: _sampleItem(sourcePageUrl: null)),
+    );
+
+    await expectLater(
+      resolver.resolve(_sampleSong),
+      throwsA(
+        _resolutionFailure(CommonsAudioResolutionFailure.missingMetadata),
+      ),
+    );
+  });
+
   test('URL y nombre de licencia no bastan ante restricciones', () async {
     final resolver = CommonsAudioResolver(
       _FakeCatalogSource(
@@ -409,11 +422,11 @@ CommonsCatalogItem _sampleItem({
   bool? attributionRequired = true,
   bool? copyrighted = true,
   String? restrictions = '',
+  String? sourcePageUrl =
+      'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav',
 }) => CommonsCatalogItem(
   song: song,
-  sourcePageUrl: Uri.parse(
-    'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav',
-  ),
+  sourcePageUrl: sourcePageUrl == null ? null : Uri.parse(sourcePageUrl),
   artistHtml: song.artist,
   mediaUrl: mediaUrl == null ? null : Uri.parse(mediaUrl),
   mimeType: mimeType,

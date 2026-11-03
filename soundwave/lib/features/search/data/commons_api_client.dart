@@ -159,6 +159,7 @@ class CommonsAudioResolver {
     final licenseUrl = item.licenseUrl;
     final usageTerms = item.usageTerms;
     final restrictions = item.restrictions;
+    final sourcePageUrl = item.sourcePageUrl;
     if (mediaUrl == null ||
         mimeType == null ||
         fileSizeBytes == null ||
@@ -169,7 +170,8 @@ class CommonsAudioResolver {
         usageTerms == null ||
         item.attributionRequired == null ||
         item.copyrighted == null ||
-        restrictions == null) {
+        restrictions == null ||
+        sourcePageUrl == null) {
       throw const CommonsAudioResolutionException(
         CommonsAudioResolutionFailure.missingMetadata,
         'Commons metadata is insufficient for an offline permission decision.',
@@ -200,7 +202,7 @@ class CommonsAudioResolver {
         sha1.trim().toLowerCase() != evidence.sha1 ||
         item.song.title != evidence.title ||
         item.song.artist != evidence.creator ||
-        item.sourcePageUrl != evidence.sourcePageUrl) {
+        sourcePageUrl != evidence.sourcePageUrl) {
       throw const CommonsAudioResolutionException(
         CommonsAudioResolutionFailure.unsupportedAudio,
         'Current file metadata no longer matches the reviewed WAV evidence.',
@@ -217,7 +219,7 @@ class CommonsAudioResolver {
         title: item.song.title,
         creator: item.song.artist,
         credit: credit,
-        sourcePageUrl: item.sourcePageUrl,
+        sourcePageUrl: sourcePageUrl,
         licenseName: licenseName,
         licenseUrl: licenseUrl,
         usageTerms: usageTerms,

@@ -16,6 +16,31 @@ revisó y qué se corrigió antes de integrar el cambio.
 | Commit / PR | Enlace cuando exista |
 
 ---
+## 2026-11-03 · @JavEstrada09 — persistencia fiel de metadatos Commons
+
+- **Herramienta:** OpenCode con GPT-5.6 Sol.
+- **Especificación:** completar la persistencia de licencia, URL de licencia,
+  atribución y página de procedencia desde Commons; conservar `null` cuando el
+  proveedor no entregue un dato, sin modificar modelos, DAO, esquema,
+  migraciones, contratos ni módulos ajenos.
+- **Resultado:** el adaptador dejó de fabricar una página con `curid` y copia
+  únicamente licencia, URL, crédito y `descriptionurl` válidos al `Song`. La
+  página de origen del elemento pasó a ser opcional.
+- **Aceptado:** pruebas para los cuatro metadatos presentes, sus ausencias
+  independientes y el recorrido sin red Commons → repositorio → `SongDao` →
+  SQLite → lectura. La comprobación de persistencia también conserva ID,
+  proveedor, `sourceId`, título, artista, duración y demás datos de la canción.
+- **Rechazado / corregido:** no se usó el `pageid` para inventar una URL ni el
+  nombre del artista para completar una atribución ausente. El resolver exige
+  una página real como metadato obligatorio y responde `missingMetadata` si
+  falta, sin relajar identidad, licencia ni autorización de la muestra.
+- **Verificación:** `dart format` únicamente sobre los seis archivos Dart
+  modificados; `flutter test --no-pub test/features/search test/core/database`:
+  76 aprobadas, 0 fallidas y 1 prueba externa omitida sin ejecutar red;
+  `flutter analyze --no-pub`: sin incidencias; `git diff --check`: sin errores.
+  No se realizó validación Android.
+- **Commit / PR:** pendientes.
+
 ## 2026-11-01 · @Ortizcarmen — CRUD: refresco entre interfaces y evidencia
 
 - **Herramienta:** Codex.
