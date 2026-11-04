@@ -79,10 +79,10 @@ class CommonsAudioAttribution {
 
   final String title;
   final String creator;
-  final String credit;
+  final String? credit;
   final Uri sourcePageUrl;
   final String licenseName;
-  final Uri licenseUrl;
+  final Uri? licenseUrl;
   final String usageTerms;
 }
 
@@ -153,12 +153,14 @@ class CommonsAudioResolver {
     final licenseUrl = item.licenseUrl;
     final usageTerms = item.usageTerms;
     final restrictions = item.restrictions;
+    final sourcePageUrl = item.sourcePageUrl;
     if (mediaUrl == null ||
         mimeType == null ||
         fileSizeBytes == null ||
         sha1 == null ||
         licenseName == null ||
         usageTerms == null ||
+        sourcePageUrl == null ||
         fileSizeBytes <= 0 ||
         !RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(sha1)) {
       throw const CommonsAudioResolutionException(
@@ -202,13 +204,8 @@ class CommonsAudioResolver {
       song: Song.fromMap({
         ...item.song.toMap(),
         'license': licenseName,
-        'attribution': credit ?? item.song.artist,
-        'license_url':
-            (licenseUrl ??
-                    Uri.parse(
-                      'https://creativecommons.org/publicdomain/mark/1.0/',
-                    ))
-                .toString(),
+        'attribution': credit,
+        'license_url': licenseUrl?.toString(),
       }),
       uri: mediaUrl,
       downloadAllowed: true,
@@ -218,12 +215,10 @@ class CommonsAudioResolver {
       attribution: CommonsAudioAttribution(
         title: item.song.title,
         creator: item.song.artist,
-        credit: credit ?? item.song.artist,
-        sourcePageUrl: item.sourcePageUrl,
+        credit: credit,
+        sourcePageUrl: sourcePageUrl,
         licenseName: licenseName,
-        licenseUrl:
-            licenseUrl ??
-            Uri.parse('https://creativecommons.org/publicdomain/mark/1.0/'),
+        licenseUrl: licenseUrl,
         usageTerms: usageTerms,
       ),
     );
@@ -239,7 +234,7 @@ const _transportMimeTypes = {
   'audio/opus',
 };
 
-/// Licenses permitting redistribution, with credits retained in Song/SQLite.
+/// Licenses permitting redistribution, with provider metadata retained as-is.
 /// This is evaluated from fresh file metadata rather than a hard-coded song ID.
 bool hasSupportedCommonsLicense(CommonsCatalogItem item) {
   if (item.restrictions?.trim().isNotEmpty ?? false) return false;

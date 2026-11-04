@@ -273,6 +273,31 @@ void main() {
     );
   });
 
+  test('resolver no inventa un crédito opcional ausente', () async {
+    final resolver = CommonsAudioResolver(
+      _FakeCatalogSource(item: _sampleItem(creditText: null)),
+    );
+
+    final resolution = await resolver.resolve(_sampleSong);
+
+    expect(resolution.downloadAllowed, isTrue);
+    expect(resolution.song.attribution, isNull);
+    expect(resolution.attribution.credit, isNull);
+  });
+
+  test('resolver exige procedencia real para autorizar la descarga', () async {
+    final resolver = CommonsAudioResolver(
+      _FakeCatalogSource(item: _sampleItem(sourcePageUrl: null)),
+    );
+
+    await expectLater(
+      resolver.resolve(_sampleSong),
+      throwsA(
+        _resolutionFailure(CommonsAudioResolutionFailure.missingMetadata),
+      ),
+    );
+  });
+
   test('URL y nombre de licencia no bastan ante restricciones', () async {
     final resolver = CommonsAudioResolver(
       _FakeCatalogSource(
@@ -362,6 +387,43 @@ void main() {
         _resolutionFailure(CommonsAudioResolutionFailure.missingMetadata),
       ),
     );
+  });
+
+  test(
+    'resolver exige un tamaño positivo para verificar la descarga',
+    () async {
+      final resolver = CommonsAudioResolver(
+        _FakeCatalogSource(item: _sampleItem(fileSizeBytes: 0)),
+      );
+
+      await expectLater(
+        resolver.resolve(_sampleSong),
+        throwsA(
+          _resolutionFailure(CommonsAudioResolutionFailure.missingMetadata),
+        ),
+      );
+    },
+  );
+
+  test('dominio público no fabrica una URL de licencia ausente', () async {
+    final resolver = CommonsAudioResolver(
+      _FakeCatalogSource(
+        item: _sampleItem(
+          creditText: null,
+          licenseShortName: 'Public Domain',
+          licenseUrl: null,
+          copyrighted: false,
+        ),
+      ),
+    );
+
+    final resolution = await resolver.resolve(_sampleSong);
+
+    expect(resolution.downloadAllowed, isTrue);
+    expect(resolution.song.licenseUrl, isNull);
+    expect(resolution.song.attribution, isNull);
+    expect(resolution.attribution.licenseUrl, isNull);
+    expect(resolution.attribution.credit, isNull);
   });
 
   test('resolver propaga errores de API sin convertirlos en permiso', () async {
@@ -463,11 +525,11 @@ CommonsCatalogItem _sampleItem({
   bool? attributionRequired = true,
   bool? copyrighted = true,
   String? restrictions = '',
+  String? sourcePageUrl =
+      'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav',
 }) => CommonsCatalogItem(
   song: song,
-  sourcePageUrl: Uri.parse(
-    'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav',
-  ),
+  sourcePageUrl: sourcePageUrl == null ? null : Uri.parse(sourcePageUrl),
   artistHtml: song.artist,
   mediaUrl: mediaUrl == null ? null : Uri.parse(mediaUrl),
   mimeType: mimeType,

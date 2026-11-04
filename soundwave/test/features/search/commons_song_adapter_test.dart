@@ -38,6 +38,15 @@ void main() {
 
   test('conserva licencia, atribución y página de origen', () {
     final item = parseCommonsCatalogResponse(realResponse).single;
+    final song = item.song;
+
+    expect(song.license, 'CC BY 4.0');
+    expect(song.licenseUrl, 'https://creativecommons.org/licenses/by/4.0');
+    expect(song.attribution, 'Own work');
+    expect(
+      song.sourceUrl,
+      'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav',
+    );
 
     expect(
       item.sourcePageUrl,
@@ -164,14 +173,62 @@ void main() {
     expect(items.single.song.title, 'Valid track');
   });
 
-  test('mantiene el Song aunque falten licencia y URL de descarga', () {
+  test('mantiene el Song con metadatos legales ausentes como null', () {
     final item = parseCommonsCatalogResponse(_response([_validPage()])).single;
 
     expect(item.song.id, 'wikimedia_commons:157450501');
+    expect(item.song.license, isNull);
+    expect(item.song.licenseUrl, isNull);
+    expect(item.song.attribution, isNull);
+    expect(item.song.sourceUrl, isNull);
+    expect(item.sourcePageUrl, isNull);
     expect(item.mediaUrl, isNull);
     expect(item.licenseShortName, isNull);
     expect(item.licenseUrl, isNull);
     expect(item.attributionRequired, isNull);
+  });
+
+  test('no completa un metadato legal ausente con otro dato', () {
+    final withoutLicense = _pageWithLegalMetadata();
+    _extendedMetadata(withoutLicense).remove('LicenseShortName');
+    final songWithoutLicense = parseCommonsCatalogResponse(
+      _response([withoutLicense]),
+    ).single.song;
+    expect(songWithoutLicense.license, isNull);
+    expect(songWithoutLicense.licenseUrl, isNotNull);
+    expect(songWithoutLicense.attribution, isNotNull);
+    expect(songWithoutLicense.sourceUrl, isNotNull);
+
+    final withoutLicenseUrl = _pageWithLegalMetadata();
+    _extendedMetadata(withoutLicenseUrl).remove('LicenseUrl');
+    final songWithoutLicenseUrl = parseCommonsCatalogResponse(
+      _response([withoutLicenseUrl]),
+    ).single.song;
+    expect(songWithoutLicenseUrl.license, isNotNull);
+    expect(songWithoutLicenseUrl.licenseUrl, isNull);
+    expect(songWithoutLicenseUrl.attribution, isNotNull);
+    expect(songWithoutLicenseUrl.sourceUrl, isNotNull);
+
+    final withoutCredit = _pageWithLegalMetadata();
+    _extendedMetadata(withoutCredit).remove('Credit');
+    final songWithoutCredit = parseCommonsCatalogResponse(
+      _response([withoutCredit]),
+    ).single.song;
+    expect(songWithoutCredit.license, isNotNull);
+    expect(songWithoutCredit.licenseUrl, isNotNull);
+    expect(songWithoutCredit.attribution, isNull);
+    expect(songWithoutCredit.sourceUrl, isNotNull);
+
+    final withoutSourceUrl = _pageWithLegalMetadata();
+    _imageInfo(withoutSourceUrl).remove('descriptionurl');
+    final itemWithoutSourceUrl = parseCommonsCatalogResponse(
+      _response([withoutSourceUrl]),
+    ).single;
+    expect(itemWithoutSourceUrl.song.license, isNotNull);
+    expect(itemWithoutSourceUrl.song.licenseUrl, isNotNull);
+    expect(itemWithoutSourceUrl.song.attribution, isNotNull);
+    expect(itemWithoutSourceUrl.song.sourceUrl, isNull);
+    expect(itemWithoutSourceUrl.sourcePageUrl, isNull);
   });
 
   test('ignora tipos incorrectos en metadatos opcionales', () {
@@ -199,16 +256,17 @@ void main() {
     expect(item.mimeType, isNull);
     expect(item.fileSizeBytes, isNull);
     expect(item.creditHtml, isNull);
+    expect(item.song.license, isNull);
+    expect(item.song.licenseUrl, isNull);
+    expect(item.song.attribution, isNull);
+    expect(item.song.sourceUrl, isNull);
     expect(item.licenseShortName, isNull);
     expect(item.licenseUrl, isNull);
     expect(item.usageTerms, isNull);
     expect(item.attributionRequired, isNull);
     expect(item.copyrighted, isNull);
     expect(item.restrictions, isNull);
-    expect(
-      item.sourcePageUrl,
-      Uri.parse('https://commons.wikimedia.org/w/index.php?curid=157450501'),
-    );
+    expect(item.sourcePageUrl, isNull);
   });
 
   test('rechaza un contenedor de respuesta mal formado', () {
@@ -256,3 +314,15 @@ Map<String, Object?> _imageInfo(Map<String, Object?> page) =>
 
 Map<String, Object?> _extendedMetadata(Map<String, Object?> page) =>
     _imageInfo(page)['extmetadata']! as Map<String, Object?>;
+
+Map<String, Object?> _pageWithLegalMetadata() {
+  final page = _validPage();
+  _imageInfo(page)['descriptionurl'] =
+      'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav';
+  _extendedMetadata(page).addAll({
+    'Credit': {'value': '<span>Own work</span>'},
+    'LicenseShortName': {'value': 'CC BY 4.0'},
+    'LicenseUrl': {'value': 'https://creativecommons.org/licenses/by/4.0'},
+  });
+  return page;
+}

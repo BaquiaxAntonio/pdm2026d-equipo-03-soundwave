@@ -9,8 +9,8 @@ const commonsProviderId = 'wikimedia_commons';
 class CommonsCatalogItem {
   const CommonsCatalogItem({
     required this.song,
-    required this.sourcePageUrl,
     required this.artistHtml,
+    this.sourcePageUrl,
     this.mediaUrl,
     this.mimeType,
     this.fileSizeBytes,
@@ -26,7 +26,7 @@ class CommonsCatalogItem {
   });
 
   final Song song;
-  final Uri sourcePageUrl;
+  final Uri? sourcePageUrl;
   final String artistHtml;
   final Uri? mediaUrl;
   final String? mimeType;
@@ -108,16 +108,9 @@ CommonsCatalogItem? _parsePage(Object? value) {
         _metadataString(extendedMetadata, 'LicenseUrl'),
       )?.toString(),
       attribution: creditText == null || creditText.isEmpty ? null : creditText,
-      sourceUrl:
-          (descriptionUrl ??
-                  Uri.https('commons.wikimedia.org', '/w/index.php', {
-                    'curid': sourceId,
-                  }))
-              .toString(),
+      sourceUrl: descriptionUrl?.toString(),
     ),
-    sourcePageUrl:
-        descriptionUrl ??
-        Uri.https('commons.wikimedia.org', '/w/index.php', {'curid': sourceId}),
+    sourcePageUrl: descriptionUrl,
     artistHtml: artistHtml,
     mediaUrl: _absoluteUri(imageInfo['url']),
     mimeType: _nonEmptyString(imageInfo['mime']),

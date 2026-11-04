@@ -19,7 +19,15 @@ void main() {
     expect(outcome.fallbackReason, isNull);
     expect(outcome.songs.single.id, item.song.id);
     expect(outcome.providerItems.single.licenseShortName, 'CC BY 4.0');
-    expect(store.saved[item.song.id], same(item.song));
+    final saved = store.saved[item.song.id];
+    expect(saved, same(item.song));
+    expect(saved?.license, 'CC BY 4.0');
+    expect(saved?.licenseUrl, 'https://creativecommons.org/licenses/by/4.0');
+    expect(saved?.attribution, 'Artist credit');
+    expect(
+      saved?.sourceUrl,
+      'https://commons.wikimedia.org/wiki/File:Track.wav',
+    );
   });
 
   test('cumple search y saveAll del contrato compartido', () async {
@@ -211,9 +219,13 @@ CommonsCatalogItem _item(String sourceId, {String title = 'Track'}) =>
         artist: 'Artist',
         provider: 'wikimedia_commons',
         sourceId: sourceId,
+        license: 'CC BY 4.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by/4.0',
+        attribution: 'Artist credit',
+        sourceUrl: 'https://commons.wikimedia.org/wiki/File:Track.wav',
       ),
       sourcePageUrl: Uri.parse(
-        'https://commons.wikimedia.org/?curid=$sourceId',
+        'https://commons.wikimedia.org/wiki/File:Track_$sourceId.wav',
       ),
       artistHtml: '<b>Artist</b>',
       licenseShortName: 'CC BY 4.0',
