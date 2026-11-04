@@ -16,6 +16,26 @@ revisó y qué se corrigió antes de integrar el cambio.
 | Commit / PR | Enlace cuando exista |
 
 ---
+## 2026-11-04 · @JavEstrada09 — documentación de validación manual Android
+
+- **Herramienta:** OpenCode con GPT-5.6 Sol.
+- **Especificación:** documentar la prueba manual reportada por el usuario en
+  un emulador Android, revisar cuatro capturas sin atribuirles resultados que no
+  demuestran y no modificar código, dependencias ni contratos.
+- **Resultado:** se añadió la ejecución de Javier a la sección 5.2 del
+  [informe de aceptación Android](../soundwave/docs/aceptacion-android-douglas.md)
+  y se enlazaron las cuatro capturas con rutas relativas y nombres exactos.
+- **Aceptado:** separación explícita entre resultados reportados y elementos
+  visibles; alcance limitado a una muestra en un emulador, sin generalizar al
+  catálogo completo ni a teléfonos físicos.
+- **Rechazado / corregido:** las capturas no se usaron para afirmar audio
+  audible ni toda la secuencia de detención y reapertura. La incidencia en la
+  conexión de `flutter run` con el servicio de depuración permanece abierta.
+- **Verificación:** revisión visual de las cuatro capturas, comprobación de sus
+  rutas, extensiones y mayúsculas, y `git diff --check`. No se ejecutó la app ni
+  se repitió la prueba manual.
+- **Commit / PR:** pendientes.
+
 ## 2026-11-03 · @JavEstrada09 — persistencia fiel de metadatos Commons
 
 - **Herramienta:** OpenCode con GPT-5.6 Sol.

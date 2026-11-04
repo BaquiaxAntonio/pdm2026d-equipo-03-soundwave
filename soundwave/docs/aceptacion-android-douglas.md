@@ -1,4 +1,4 @@
-# Aceptación Android — Inicio, navegación y cierre del MVP (Douglas)
+# Aceptación Android — Inicio, navegación y cierre del MVP
 
 Documento de la sección **2.4** del plan de cierre del MVP. Reúne la
 configuración Android, el recorrido de aceptación y la evidencia reproducible
@@ -74,6 +74,8 @@ Ejecutar sobre el commit final de `main`, en un emulador o dispositivo real.
 
 ## 5. Evidencia reproducible
 
+### 5.1. Ejecución anterior (Douglas)
+
 Datos de la ejecución de aceptación:
 
 | Dato | Valor |
@@ -87,7 +89,7 @@ Datos de la ejecución de aceptación:
 | Errores observados | (1) La etiqueta «Reproductor» de la barra inferior se parte en dos líneas. (2) «Deshacer» dura 4 s; si se agota, la descarga se borra definitivamente. (3) Sin red, Buscar muestra caché o vacío, no un error explícito. (4) La APK release se firmó con la clave de depuración al no existir `android/key.properties`. |
 | Capturas o video | 11 capturas en `docs/evidencia/` (ver detalle abajo) |
 
-### Capturas del recorrido
+#### Capturas del recorrido
 
 1. `evidencia/01-inicio-vacio.png` — Inicio vacío tras instalación limpia.
 2. `evidencia/02-inicio-biblioteca-real.png` — Inicio con «Blue Danube» tras la descarga.
@@ -101,11 +103,73 @@ Datos de la ejecución de aceptación:
 10. `evidencia/10-buscar-offline-cache.png` — Buscar sin red con caché.
 11. `evidencia/11-buscar-offline-vacio.png` — Buscar sin red sin resultados.
 
+### 5.2. Validación manual reportada por @JavEstrada09
+
+Esta entrada documenta el reporte manual del usuario. OpenCode no repitió el
+recorrido ni verificó de forma independiente el audio, la red, la persistencia
+o los créditos mostrados por la aplicación.
+
+| Dato | Valor |
+| --- | --- |
+| Usuario | `@JavEstrada09` |
+| Fecha | 2026-11-04 |
+| Referencia Git comprobada al documentar | Rama `mvp/api-search`, commit `626a0b75b395783ef2a354c140a84ae449524252`, árbol de trabajo limpio antes de editar |
+| Dispositivo / emulador reportado | Emulador Medium Phone (`emulator-5554`) |
+| Versión de Android reportada | Android 16 (API 36) |
+| Alcance | Una muestra, «Welcome to Noxville», en un emulador. No valida todo el catálogo ni un teléfono físico. |
+
+Resultados reportados por el usuario:
+
+1. La búsqueda de «Welcome to Noxville» encontró la canción de Sir Goose of
+   Honker.
+2. Tras solicitar la descarga, la canción apareció con el estado «Descargada».
+3. Se confirmó reproducción audible y desplazamiento dentro del audio.
+4. Se activó el modo avión y se apagó el Wi-Fi.
+5. Después de forzar la detención y reabrir la misma instalación, la canción
+   permaneció disponible y volvió a reproducirse.
+6. La búsqueda sin conexión de «Noxville» encontró la canción e informó que en
+   ese estado solo consulta canciones previamente consultadas.
+7. Sin conexión se mostraron los créditos `CC BY 4.0`, Sir Goose of Honker,
+   `Own work`, la URL de licencia y la página de Commons. Las URL concretas se
+   transcriben abajo únicamente desde la captura donde resultan visibles.
+
+#### Incidencia abierta reportada
+
+`flutter run` compiló e instaló el APK, pero falló al conectarse al servicio de
+depuración. La aplicación permaneció funcionando y el usuario continuó el
+recorrido manualmente. Esta incidencia queda documentada como no resuelta; esta
+entrada no aporta diagnóstico de causa ni confirma una corrección.
+
+#### Capturas aportadas
+
+Estas capturas respaldan solo los elementos visibles descritos. No demuestran
+por sí solas que el audio fuera audible ni toda la secuencia de detención
+forzada y reapertura, que permanecen como resultados reportados por el usuario.
+
+1. [`Inicio_SinConexion.jpg`](evidencia/javier/Inicio_SinConexion.jpg) muestra
+   Inicio con «Welcome to Noxville» de Sir Goose of Honker en «Continuar
+   escuchando», en una tarjeta y en el mini reproductor. En la barra de estado
+   se ve el icono de modo avión.
+2. [`Descarga_SinConexion.jpg`](evidencia/javier/Descarga_SinConexion.jpg)
+   muestra «Tu colección sin conexión», «1 canción disponible» y la fila de
+   «Welcome to Noxville» con el estado «Descargada», además del mini reproductor.
+3. [`Busqueda_SInConexion.jpg`](evidencia/javier/Busqueda_SInConexion.jpg)
+   muestra la consulta «Noxville», el aviso «Sin conexión. Mostrando solo
+   canciones consultadas anteriormente.» y un resultado: «Welcome to Noxville»,
+   Sir Goose of Honker, duración `0:06` y estado «Descargada».
+4. [`Creditos.jpg`](evidencia/javier/Creditos.jpg) muestra el reproductor con
+   «Welcome to Noxville», Sir Goose of Honker, «Archivo local · Sin conexión»,
+   posición y duración `0:06`, y el bloque «Créditos · CC BY 4.0» desplegado. En
+   ese bloque son visibles `Own work`,
+   `https://creativecommons.org/licenses/by/4.0` y
+   `https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav`.
+
 ## 6. Limitaciones conocidas
 
-- La APK de esta prueba se firmó con la clave de depuración porque no existe
-  `android/key.properties`. Para una entrega firmada hay que crear el keystore y
-  ese archivo (no versionado) y recompilar con `flutter build apk --release`.
+- La APK de la ejecución anterior (Douglas) se firmó con la clave de depuración
+  porque no existe `android/key.properties`. Para una entrega firmada hay que
+  crear el keystore y ese archivo (no versionado) y recompilar con
+  `flutter build apk --release`.
 - «Deshacer» solo está disponible durante 4 segundos
   (`downloadUndoDurationProvider`). Si se agota, la descarga y el archivo se
   eliminan definitivamente. En la demostración hay que pulsarlo de inmediato.
