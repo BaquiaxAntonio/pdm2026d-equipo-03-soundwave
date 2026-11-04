@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/core/database/schema.dart';
 import 'package:soundwave/core/errors/repository_exception.dart';
+import 'package:soundwave/core/models/playlist.dart';
+import 'package:soundwave/core/models/song.dart';
 import 'package:soundwave/features/playlists/data/sqlite_playlist_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -171,6 +173,115 @@ void main() {
           RepositoryErrorCode.invalidData,
         ),
       ),
+    );
+  });
+
+  const alpha = Song(
+    id: 'demo:alpha',
+    title: 'Alpha',
+    artist: 'Artist',
+    provider: 'demo',
+    sourceId: 'alpha',
+    durationMs: 1000,
+  );
+  const beta = Song(
+    id: 'demo:beta',
+    title: 'Beta',
+    artist: 'Artist',
+    provider: 'demo',
+    sourceId: 'beta',
+    durationMs: 2000,
+  );
+
+  test(
+    'adds songs at the end, saves metadata and ignores duplicates',
+    () async {
+      final created = await repository.create('Viaje');
+
+      expect(
+        await repository.addSong(playlistId: created.id, song: alpha),
+        isTrue,
+      );
+      expect(
+        await repository.addSong(playlistId: created.id, song: beta),
+        isTrue,
+      );
+      expect(
+        await repository.addSong(playlistId: created.id, song: alpha),
+        isFalse,
+      );
+
+      final songs = await repository.loadSongs(created.id);
+      expect(songs.map((song) => song.id), ['demo:alpha', 'demo:beta']);
+      expect((await repository.loadPlaylists()).single.songCount, 2);
+      final row = await database.query(
+        'songs',
+        where: 'id = ?',
+        whereArgs: [alpha.id],
+      );
+      expect(row.single['title'], 'Alpha');
+    },
+  );
+
+  test('removing a song only drops its playlist membership', () async {
+    final created = await repository.create('Viaje');
+    await repository.addSong(playlistId: created.id, song: alpha);
+
+    await repository.removeSong(playlistId: created.id, songId: alpha.id);
+
+    expect(await repository.loadSongs(created.id), isEmpty);
+    expect((await repository.loadPlaylists()).single.songCount, 0);
+    final row = await database.query(
+      'songs',
+      where: 'id = ?',
+      whereArgs: [alpha.id],
+    );
+    expect(row, hasLength(1));
+  });
+
+  test('favorites live in the reserved automatic list', () async {
+    await repository.setFavorite(song: alpha, favorite: true);
+    await repository.setFavorite(song: alpha, favorite: true);
+
+    final favorites = (await repository.loadPlaylists()).singleWhere(
+      (entry) => entry.playlist.id == favoritesPlaylistId,
+    );
+    expect(favorites.playlist.name, favoritesPlaylistName);
+    expect(favorites.songCount, 1);
+    expect(
+      (await repository.loadSongs(favoritesPlaylistId)).single.id,
+      alpha.id,
+    );
+
+    await repository.setFavorite(song: alpha, favorite: false);
+
+    expect(await repository.loadSongs(favoritesPlaylistId), isEmpty);
+  });
+
+  test('the automatic favorites list name and row are protected', () async {
+    await repository.setFavorite(song: alpha, favorite: true);
+
+    await expectLater(
+      repository.rename(id: favoritesPlaylistId, name: 'Otra'),
+      throwsA(
+        isA<RepositoryException>().having(
+          (error) => error.code,
+          'code',
+          RepositoryErrorCode.invalidData,
+        ),
+      ),
+    );
+    await expectLater(
+      repository.delete(favoritesPlaylistId),
+      throwsA(isA<RepositoryException>()),
+    );
+    await expectLater(
+      repository.setArchived(id: favoritesPlaylistId, archived: true),
+      throwsA(isA<RepositoryException>()),
+    );
+    await expectLater(
+      repository.create(favoritesPlaylistName),
+      throwsA(isA<RepositoryException>()),
     );
   });
 }

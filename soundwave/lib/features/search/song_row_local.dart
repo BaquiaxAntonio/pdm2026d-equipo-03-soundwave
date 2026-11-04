@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/song.dart';
 import '../../app/song_selection.dart';
 import '../../core/providers/data_mode_provider.dart';
+import '../playlists/song_playlist_menu.dart';
 import 'cover_placeholder_local.dart';
 import 'search_controller.dart';
 import 'search_theme_local.dart';
@@ -17,64 +18,69 @@ class SongRowLocal extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final download = ref.watch(searchDownloadStateProvider(song.id));
-    return Container(
-      constraints: const BoxConstraints(minHeight: 72),
-      padding: const EdgeInsets.symmetric(
-        horizontal: SearchThemeLocal.space16,
-        vertical: SearchThemeLocal.space8,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          CoverPlaceholderLocal(songId: song.id),
-          const SizedBox(width: SearchThemeLocal.space12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  song.title,
-                  style: SearchThemeLocal.songTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: SearchThemeLocal.space4),
-                Text(
-                  song.artist,
-                  style: SearchThemeLocal.artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (download.message case final message?) ...[
-                  const SizedBox(height: SearchThemeLocal.space4),
+    final isDemo = ref.watch(dataModeProvider) == DataMode.demo;
+    return InkWell(
+      onTap: isDemo ? null : () => openSongInPlayer(ref, song.id),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 72),
+        padding: const EdgeInsets.symmetric(
+          horizontal: SearchThemeLocal.space16,
+          vertical: SearchThemeLocal.space8,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CoverPlaceholderLocal(songId: song.id),
+            const SizedBox(width: SearchThemeLocal.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    message,
-                    style: SearchThemeLocal.auxiliary,
-                    maxLines: 2,
+                    song.title,
+                    style: SearchThemeLocal.songTitle,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: SearchThemeLocal.space4),
+                  Text(
+                    song.artist,
+                    style: SearchThemeLocal.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (download.message case final message?) ...[
+                    const SizedBox(height: SearchThemeLocal.space4),
+                    Text(
+                      message,
+                      style: SearchThemeLocal.auxiliary,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: SearchThemeLocal.space12),
-          Text(
-            song.formattedDuration,
-            style: SearchThemeLocal.auxiliary,
-            semanticsLabel:
-                'Duración ${song.formattedDuration.replaceAll(':', ' minutos ')} segundos',
-          ),
-          const SizedBox(width: SearchThemeLocal.space4),
-          IconButton(
-            tooltip: 'Reproducir ${song.title}',
-            icon: const Icon(Icons.play_arrow),
-            onPressed: ref.watch(dataModeProvider) == DataMode.demo
-                ? null
-                : () => openSongInPlayer(ref, song.id),
-          ),
-          _DownloadAction(song: song, state: download),
-        ],
+            const SizedBox(width: SearchThemeLocal.space12),
+            Text(
+              song.formattedDuration,
+              style: SearchThemeLocal.auxiliary,
+              semanticsLabel:
+                  'Duración ${song.formattedDuration.replaceAll(':', ' minutos ')} segundos',
+            ),
+            const SizedBox(width: SearchThemeLocal.space4),
+            if (isDemo)
+              IconButton(
+                tooltip: 'Reproducir ${song.title}',
+                icon: const Icon(Icons.play_arrow),
+                onPressed: null,
+              )
+            else
+              SongPlaylistMenu(song: song),
+            _DownloadAction(song: song, state: download),
+          ],
+        ),
       ),
     );
   }

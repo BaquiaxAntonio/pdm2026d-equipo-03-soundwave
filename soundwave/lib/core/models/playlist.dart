@@ -41,3 +41,14 @@ class PlaylistEntry {
   String get songLabel =>
       '$songCount ${songCount == 1 ? 'canción' : 'canciones'}';
 }
+
+/// Reserved list that stores the songs marked with the heart action. Keeping it
+/// as a normal playlist avoids a schema migration while reusing playlist_songs.
+const favoritesPlaylistId = 'favorites';
+const favoritesPlaylistName = 'Música que me gusta';
+const favoritesPlaylist = Playlist(
+  id: favoritesPlaylistId,
+  name: favoritesPlaylistName,
+);
+
+bool isFavoritesPlaylist(String id) => id == favoritesPlaylistId;

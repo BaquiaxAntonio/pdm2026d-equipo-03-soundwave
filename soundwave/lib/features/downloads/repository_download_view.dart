@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/navigation_provider.dart';
 import '../../app/song_selection.dart';
 import '../../core/models/download_record.dart';
+import '../playlists/song_playlist_menu.dart';
 import 'download_cover.dart';
 import 'download_providers.dart';
 import 'download_theme.dart';
@@ -281,6 +282,10 @@ class RepositoryDownloadView extends ConsumerWidget {
                                       entry.record.songId,
                                     ),
                                   ),
+                                if (entry.record.state ==
+                                        DownloadState.completed &&
+                                    entry.song != null)
+                                  SongPlaylistMenu(song: entry.song!),
                                 if ([
                                   DownloadState.completed,
                                   DownloadState.failed,

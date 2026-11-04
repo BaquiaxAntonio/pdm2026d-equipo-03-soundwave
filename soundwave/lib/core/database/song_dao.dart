@@ -7,15 +7,20 @@ class SongDao {
 
   final Database database;
 
-  Future<void> upsert(Song song) => database.transaction((transaction) async {
-    final updated = await transaction.update(
+  Future<void> upsert(Song song) =>
+      database.transaction((transaction) => upsertIn(transaction, song));
+
+  /// Reuses the caller's transaction when a playlist write also needs the song
+  /// metadata, so the foreign key to songs(id) is satisfied atomically.
+  static Future<void> upsertIn(DatabaseExecutor database, Song song) async {
+    final updated = await database.update(
       'songs',
       song.toMap()..remove('id'),
       where: 'id = ?',
       whereArgs: [song.id],
     );
-    if (updated == 0) await transaction.insert('songs', song.toMap());
-  });
+    if (updated == 0) await database.insert('songs', song.toMap());
+  }
 
   Future<Song?> findById(String id) async {
     final rows = await database.query(
