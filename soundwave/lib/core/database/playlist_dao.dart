@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../models/playlist.dart';
+import '../models/song.dart';
 
 class PlaylistDao {
   const PlaylistDao(this.database);
@@ -77,6 +78,49 @@ ORDER BY p.archived, p.name COLLATE NOCASE
       'id': 'offline',
       'name': 'Colección sin conexión',
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> ensureFavorites() async {
+    await database.insert('playlists', {
+      'id': favoritesPlaylistId,
+      'name': favoritesPlaylistName,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<bool> hasSong({
+    required String playlistId,
+    required String songId,
+  }) async {
+    final rows = await database.query(
+      'playlist_songs',
+      columns: ['song_id'],
+      where: 'playlist_id = ? AND song_id = ?',
+      whereArgs: [playlistId, songId],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
+  Future<int> nextPosition(String playlistId) async {
+    final rows = await database.rawQuery(
+      'SELECT COALESCE(MAX(position) + 1, 0) AS next_position '
+      'FROM playlist_songs WHERE playlist_id = ?',
+      [playlistId],
+    );
+    return (rows.single['next_position'] as int?) ?? 0;
+  }
+
+  Future<List<Song>> songs(String playlistId) async {
+    final rows = await database.rawQuery(
+      '''
+SELECT s.* FROM playlist_songs ps
+JOIN songs s ON s.id = ps.song_id
+WHERE ps.playlist_id = ?
+ORDER BY ps.position
+''',
+      [playlistId],
+    );
+    return rows.map(Song.fromMap).toList(growable: false);
   }
 
   Future<void> addSong({

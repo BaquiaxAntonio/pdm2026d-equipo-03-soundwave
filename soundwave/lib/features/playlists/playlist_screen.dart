@@ -7,6 +7,8 @@ import '../../core/contracts/playlist_repository.dart';
 import '../../core/errors/repository_exception.dart';
 import '../../core/models/playlist.dart';
 import '../../core/providers/data_mode_provider.dart';
+import 'add_songs_sheet.dart';
+import 'playlist_detail_screen.dart';
 import 'playlist_form.dart';
 import 'playlist_providers.dart';
 
@@ -21,7 +23,6 @@ class PlaylistScreen extends ConsumerWidget {
     final entries = ref.watch(playlistEntriesProvider);
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         title: const Text('Listas'),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -39,14 +40,22 @@ class PlaylistScreen extends ConsumerWidget {
                 onRetry: () => ref.invalidate(playlistEntriesProvider),
               ),
               data: (all) {
-                if (all.isEmpty) {
-                  return _EmptyState(onCreate: () => _openForm(context, ref));
-                }
+                final favorites = all
+                    .where((entry) => entry.playlist.id == favoritesPlaylistId)
+                    .firstOrNull;
                 final active = all
-                    .where((entry) => !entry.playlist.archived)
+                    .where(
+                      (entry) =>
+                          !entry.playlist.archived &&
+                          entry.playlist.id != favoritesPlaylistId,
+                    )
                     .toList(growable: false);
                 final archived = all
-                    .where((entry) => entry.playlist.archived)
+                    .where(
+                      (entry) =>
+                          entry.playlist.archived &&
+                          entry.playlist.id != favoritesPlaylistId,
+                    )
                     .toList(growable: false);
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
@@ -66,6 +75,13 @@ class PlaylistScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 24),
+                    _FavoritesTile(
+                      songLabel: favorites?.songLabel ?? '0 canciones',
+                      onOpen: () => _openDetail(
+                        context,
+                        favorites?.playlist ?? favoritesPlaylist,
+                      ),
+                    ),
                     if (active.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 24),
@@ -76,6 +92,9 @@ class PlaylistScreen extends ConsumerWidget {
                         _PlaylistTile(
                           key: ValueKey('playlist-${entry.playlist.id}'),
                           entry: entry,
+                          onOpen: () => _openDetail(context, entry.playlist),
+                          onAdd: () =>
+                              showAddSongsSheet(context, entry.playlist),
                           onEdit: () =>
                               _openForm(context, ref, initial: entry.playlist),
                           onArchive: () => _setArchived(context, ref, entry),
@@ -91,6 +110,9 @@ class PlaylistScreen extends ConsumerWidget {
                         _PlaylistTile(
                           key: ValueKey('playlist-${entry.playlist.id}'),
                           entry: entry,
+                          onOpen: () => _openDetail(context, entry.playlist),
+                          onAdd: () =>
+                              showAddSongsSheet(context, entry.playlist),
                           onEdit: () =>
                               _openForm(context, ref, initial: entry.playlist),
                           onArchive: () => _setArchived(
@@ -108,6 +130,14 @@ class PlaylistScreen extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _openDetail(BuildContext context, Playlist playlist) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlaylistDetailScreen(playlist: playlist),
       ),
     );
   }
@@ -241,16 +271,44 @@ class PlaylistScreen extends ConsumerWidget {
   }
 }
 
+class _FavoritesTile extends StatelessWidget {
+  const _FavoritesTile({required this.songLabel, required this.onOpen});
+
+  final String songLabel;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: onOpen,
+      leading: const CircleAvatar(
+        backgroundColor: AppColors.surfaceElevated,
+        child: Icon(Icons.favorite_rounded, color: AppColors.accent),
+      ),
+      title: const Text(favoritesPlaylistName),
+      subtitle: Text('$songLabel · Lista automática'),
+      trailing: const Icon(Icons.chevron_right_rounded),
+    );
+  }
+}
+
+enum _PlaylistAction { add, edit, archive, delete }
+
 class _PlaylistTile extends StatelessWidget {
   const _PlaylistTile({
     super.key,
     required this.entry,
+    required this.onOpen,
+    required this.onAdd,
     required this.onEdit,
     required this.onArchive,
     required this.onDelete,
   });
 
   final PlaylistEntry entry;
+  final VoidCallback onOpen;
+  final VoidCallback onAdd;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
   final VoidCallback onDelete;
@@ -261,7 +319,7 @@ class _PlaylistTile extends StatelessWidget {
     final name = entry.playlist.name;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      onTap: onEdit,
+      onTap: onOpen,
       leading: CircleAvatar(
         backgroundColor: AppColors.surfaceElevated,
         child: Icon(
@@ -273,67 +331,38 @@ class _PlaylistTile extends StatelessWidget {
       subtitle: Text(
         archived ? 'Archivada · ${entry.songLabel}' : entry.songLabel,
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: archived ? 'Desarchivar $name' : 'Archivar $name',
-            onPressed: onArchive,
-            icon: Icon(
-              archived ? Icons.unarchive_outlined : Icons.archive_outlined,
-            ),
+      trailing: PopupMenuButton<_PlaylistAction>(
+        tooltip: 'Opciones de la lista $name',
+        onSelected: (action) {
+          switch (action) {
+            case _PlaylistAction.add:
+              onAdd();
+            case _PlaylistAction.edit:
+              onEdit();
+            case _PlaylistAction.archive:
+              onArchive();
+            case _PlaylistAction.delete:
+              onDelete();
+          }
+        },
+        itemBuilder: (_) => [
+          const PopupMenuItem(
+            value: _PlaylistAction.add,
+            child: Text('Agregar'),
           ),
-          IconButton(
-            tooltip: 'Eliminar $name',
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline_rounded),
+          const PopupMenuItem(
+            value: _PlaylistAction.edit,
+            child: Text('Editar'),
+          ),
+          PopupMenuItem(
+            value: _PlaylistAction.archive,
+            child: Text(archived ? 'Desarchivar' : 'Archivar'),
+          ),
+          const PopupMenuItem(
+            value: _PlaylistAction.delete,
+            child: Text('Eliminar'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onCreate});
-
-  final VoidCallback onCreate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircleAvatar(
-              radius: 40,
-              backgroundColor: AppColors.surfaceElevated,
-              child: Icon(
-                Icons.queue_music_rounded,
-                size: 36,
-                color: AppColors.accent,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Aún no tienes listas',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Agrupa tus canciones en listas para encontrarlas más rápido.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: onCreate,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Crear la primera'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -371,7 +400,6 @@ class _DemoNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         title: const Text('Listas'),
       ),
       body: const SafeArea(

@@ -7,5 +7,7 @@ import '../features/playlists/playlist_providers.dart';
 /// after a successful mutation, without recreating either repository.
 void invalidatePlaylistViews(WidgetRef ref) {
   ref.invalidate(playlistEntriesProvider);
+  ref.invalidate(playlistSongsProvider);
+  ref.invalidate(favoriteSongIdsProvider);
   ref.invalidate(playerPlaylistsProvider);
 }

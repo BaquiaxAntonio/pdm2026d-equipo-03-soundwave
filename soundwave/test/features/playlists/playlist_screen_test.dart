@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/core/contracts/playlist_repository.dart';
 import 'package:soundwave/core/errors/repository_exception.dart';
 import 'package:soundwave/core/models/playlist.dart';
+import 'package:soundwave/core/models/song.dart';
 import 'package:soundwave/core/providers/data_mode_provider.dart';
 import 'package:soundwave/features/playlists/playlist_providers.dart';
 import 'package:soundwave/features/playlists/playlist_screen.dart';
@@ -18,6 +19,7 @@ void main() {
         overrides: [
           dataModeProvider.overrideWithValue(DataMode.localSqlite),
           playlistRepositoryProvider.overrideWith((ref) async => repository),
+          catalogSongsProvider.overrideWith((ref) async => const []),
         ],
         child: const MaterialApp(home: PlaylistScreen()),
       ),
@@ -26,7 +28,7 @@ void main() {
   }
 
   testWidgets(
-    'tocar una lista abre el formulario lleno y guarda cambios con el mismo id',
+    'editar una lista abre el formulario lleno y guarda cambios con el mismo id',
     (tester) async {
       final repository = _FakePlaylistRepository([
         const PlaylistEntry(
@@ -36,7 +38,9 @@ void main() {
       ]);
       await pumpScreen(tester, repository);
 
-      await tester.tap(find.text('Transporte'));
+      await tester.tap(find.byTooltip('Opciones de la lista Transporte'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Editar'));
       await tester.pumpAndSettle();
       expect(find.text('Editar lista'), findsOneWidget);
       expect(
@@ -54,6 +58,29 @@ void main() {
       expect(repository.entries.single.songCount, 3);
     },
   );
+
+  testWidgets('el menú de la lista abre la hoja para agregar canciones', (
+    tester,
+  ) async {
+    final repository = _FakePlaylistRepository([
+      const PlaylistEntry(
+        playlist: Playlist(id: 'pl-1', name: 'Transporte'),
+        songCount: 0,
+      ),
+    ]);
+    await pumpScreen(tester, repository);
+
+    await tester.tap(find.byTooltip('Opciones de la lista Transporte'));
+    await tester.pumpAndSettle();
+    expect(find.text('Agregar'), findsOneWidget);
+    expect(find.text('Editar'), findsOneWidget);
+
+    await tester.tap(find.text('Agregar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Agregar a «Transporte»'), findsOneWidget);
+    expect(find.text('Aún no tienes canciones guardadas.'), findsOneWidget);
+  });
 
   testWidgets('crear una lista la muestra sin recargar a mano', (tester) async {
     final repository = _FakePlaylistRepository([
@@ -108,7 +135,9 @@ void main() {
     ]);
     await pumpScreen(tester, repository);
 
-    await tester.tap(find.byTooltip('Eliminar Transporte'));
+    await tester.tap(find.byTooltip('Opciones de la lista Transporte'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Eliminar'));
     await tester.pumpAndSettle();
@@ -128,13 +157,81 @@ void main() {
     expect(find.text('Archivadas'), findsOneWidget);
     expect(find.text('Transporte'), findsOneWidget);
   });
+
+  testWidgets(
+    'abrir una lista muestra sus canciones y permite quitarlas con deshacer',
+    (tester) async {
+      const song = Song(
+        id: 'song-1',
+        title: 'Canción',
+        artist: 'Artista',
+        provider: 'local',
+        sourceId: 'song-1',
+        durationMs: 63000,
+      );
+      final repository = _FakePlaylistRepository(
+        [
+          const PlaylistEntry(
+            playlist: Playlist(id: 'pl-1', name: 'Transporte'),
+            songCount: 1,
+          ),
+        ],
+        {
+          'pl-1': [song],
+        },
+      );
+      await pumpScreen(tester, repository);
+
+      await tester.tap(find.text('Transporte'));
+      await tester.pumpAndSettle();
+      expect(find.text('Canción'), findsOneWidget);
+      expect(find.text('Toca una canción para reproducirla.'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Quitar Canción de la lista'));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Borrar «Canción»?'), findsOneWidget);
+      await tester.tap(find.text('Borrar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Esta lista aún no tiene canciones'), findsOneWidget);
+      expect(repository.entries.single.songCount, 0);
+
+      await tester.tap(find.text('Deshacer'));
+      await tester.pumpAndSettle();
+      expect(find.text('Canción'), findsOneWidget);
+      expect(repository.entries.single.songCount, 1);
+    },
+  );
+
+  testWidgets(
+    'los favoritos aparecen como lista automática y abren su detalle',
+    (tester) async {
+      final repository = _FakePlaylistRepository([
+        const PlaylistEntry(
+          playlist: Playlist(id: 'pl-1', name: 'Transporte'),
+          songCount: 0,
+        ),
+      ]);
+      await pumpScreen(tester, repository);
+
+      expect(find.text(favoritesPlaylistName), findsOneWidget);
+      await tester.tap(find.text(favoritesPlaylistName));
+      await tester.pumpAndSettle();
+      expect(find.text('Aún no tienes canciones favoritas'), findsOneWidget);
+    },
+  );
 }
 
 class _FakePlaylistRepository implements PlaylistRepository {
-  _FakePlaylistRepository([Iterable<PlaylistEntry> seed = const []])
-    : _entries = [...seed];
+  _FakePlaylistRepository([
+    Iterable<PlaylistEntry> seed = const [],
+    Map<String, List<Song>> songs = const {},
+  ]) : _entries = [...seed],
+       _songs = {
+         for (final entry in songs.entries) entry.key: [...entry.value],
+       };
 
   final List<PlaylistEntry> _entries;
+  final Map<String, List<Song>> _songs;
   var _nextId = 0;
 
   List<PlaylistEntry> get entries => List.unmodifiable(_entries);
@@ -181,6 +278,51 @@ class _FakePlaylistRepository implements PlaylistRepository {
       );
     }
     _entries.removeAt(index);
+  }
+
+  @override
+  Future<List<Song>> loadSongs(String playlistId) async =>
+      List.unmodifiable(_songs[playlistId] ?? const <Song>[]);
+
+  @override
+  Future<bool> addSong({required String playlistId, required Song song}) async {
+    final songs = _songs.putIfAbsent(playlistId, () => []);
+    if (songs.any((item) => item.id == song.id)) return false;
+    songs.add(song);
+    _syncCount(playlistId);
+    return true;
+  }
+
+  @override
+  Future<void> removeSong({
+    required String playlistId,
+    required String songId,
+  }) async {
+    _songs[playlistId]?.removeWhere((song) => song.id == songId);
+    _syncCount(playlistId);
+  }
+
+  @override
+  Future<void> setFavorite({required Song song, required bool favorite}) async {
+    if (_indexOf(favoritesPlaylistId) == -1) {
+      _entries.add(
+        const PlaylistEntry(playlist: favoritesPlaylist, songCount: 0),
+      );
+    }
+    if (favorite) {
+      await addSong(playlistId: favoritesPlaylistId, song: song);
+    } else {
+      await removeSong(playlistId: favoritesPlaylistId, songId: song.id);
+    }
+  }
+
+  void _syncCount(String playlistId) {
+    final index = _indexOf(playlistId);
+    if (index == -1) return;
+    _entries[index] = PlaylistEntry(
+      playlist: _entries[index].playlist,
+      songCount: _songs[playlistId]?.length ?? 0,
+    );
   }
 
   int _indexOf(String id) =>

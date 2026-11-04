@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/app_theme.dart';
 import '../../app/navigation_provider.dart';
+import '../../app/playlist_refresh.dart';
+import '../../core/models/playlist.dart';
+import '../../core/models/song.dart';
+import '../../core/providers/data_mode_provider.dart';
+import '../playlists/playlist_providers.dart';
+import '../playlists/playlist_screen.dart';
 import '../search/search_controller.dart';
 import 'player_cover_local.dart';
-import 'player_playlists_screen.dart';
 import 'providers/player_provider.dart';
 import 'providers/player_from_downloads_provider.dart';
 import 'providers/player_queue_provider.dart';
@@ -49,11 +55,11 @@ class PlayerScreen extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Listas de reproducción',
+                      tooltip: 'Listas',
                       icon: const Icon(Icons.queue_music),
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const PlayerPlaylistsScreen(),
+                          builder: (_) => const PlaylistScreen(),
                         ),
                       ),
                     ),
@@ -82,17 +88,33 @@ class PlayerScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   Center(child: PlayerCoverLocal(songId: song.id)),
                   const SizedBox(height: 16),
-                  Text(
-                    song.title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  Text(song.artist, textAlign: TextAlign.center),
-                  Text(
-                    track!.localPath == null
-                        ? 'Reproducción por Internet'
-                        : 'Archivo local · Sin conexión',
-                    textAlign: TextAlign.center,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 48),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              song.title,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            Text(song.artist, textAlign: TextAlign.center),
+                            Text(
+                              track!.localPath == null
+                                  ? 'Reproducción por Internet'
+                                  : 'Archivo local · Sin conexión',
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        width: 48,
+                        child: _FavoriteIconButton(song: song),
+                      ),
+                    ],
                   ),
                   if (state.isLoading)
                     const LinearProgressIndicator(
@@ -257,5 +279,54 @@ class PlayerScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// One-tap favorite toggle, like the heart on other music apps.
+class _FavoriteIconButton extends ConsumerWidget {
+  const _FavoriteIconButton({required this.song});
+
+  final Song song;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorite =
+        ref.watch(favoriteSongIdsProvider).asData?.value.contains(song.id) ??
+        false;
+    final demo = ref.watch(dataModeProvider) == DataMode.demo;
+    return IconButton(
+      tooltip: favorite ? 'Quitar de $favoritesPlaylistName' : 'Me gusta',
+      onPressed: demo ? null : () => _toggle(context, ref, favorite),
+      icon: Icon(
+        favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+        color: favorite ? AppColors.accent : null,
+      ),
+    );
+  }
+
+  Future<void> _toggle(
+    BuildContext context,
+    WidgetRef ref,
+    bool favorite,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final repository = await ref.read(playlistRepositoryProvider.future);
+      await repository.setFavorite(song: song, favorite: !favorite);
+      invalidatePlaylistViews(ref);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            favorite
+                ? 'Quitada de «$favoritesPlaylistName».'
+                : 'Guardada en «$favoritesPlaylistName».',
+          ),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No se pudo actualizar tus favoritos.')),
+      );
+    }
   }
 }
