@@ -22,9 +22,7 @@ class PlaylistScreen extends ConsumerWidget {
     }
     final entries = ref.watch(playlistEntriesProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Listas'),
-      ),
+      appBar: AppBar(title: const Text('Listas')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(context, ref),
         icon: const Icon(Icons.add_rounded),
@@ -399,9 +397,7 @@ class _DemoNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Listas'),
-      ),
+      appBar: AppBar(title: const Text('Listas')),
       body: const SafeArea(
         child: Center(
           child: Padding(
