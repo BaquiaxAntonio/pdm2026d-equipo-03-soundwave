@@ -169,6 +169,17 @@ const testSongs = [
 ];
 
 void main() {
+  test('el saludo depende de la hora local', () {
+    expect(greetingForHour(0), 'Buenas noches');
+    expect(greetingForHour(5), 'Buenas noches');
+    expect(greetingForHour(6), 'Buenos días');
+    expect(greetingForHour(11), 'Buenos días');
+    expect(greetingForHour(12), 'Buenas tardes');
+    expect(greetingForHour(19), 'Buenas tardes');
+    expect(greetingForHour(20), 'Buenas noches');
+    expect(greetingForHour(23), 'Buenas noches');
+  });
+
   testWidgets('Inicio muestra secciones con etiquetas correctas', (
     WidgetTester tester,
   ) async {

@@ -7,6 +7,12 @@ import '../../core/models/song.dart';
 import '../../core/providers/data_mode_provider.dart';
 import 'home_providers.dart';
 
+String greetingForHour(int hour) {
+  if (hour >= 6 && hour < 12) return 'Buenos días';
+  if (hour >= 12 && hour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -360,7 +366,7 @@ class _HeroContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Buenos días',
+          greetingForHour(DateTime.now().hour),
           style: AppTextStyles.bodySecondary.copyWith(
             color: AppColors.accent,
             fontWeight: FontWeight.w600,
