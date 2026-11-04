@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app_theme.dart';
+import 'app/mini_player.dart';
 import 'app/navigation_provider.dart';
 import 'features/downloads/download_screen.dart';
 import 'features/home/home_screen.dart';
@@ -64,35 +65,42 @@ class MainShell extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: activeTab.index,
-        onDestinationSelected: (index) =>
-            ref.read(activeTabProvider.notifier).select(AppTab.values[index]),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Inicio',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search),
-            label: 'Buscar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.play_circle_outline),
-            selectedIcon: Icon(Icons.play_circle),
-            label: 'Reproductor',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.download_outlined),
-            selectedIcon: Icon(Icons.download),
-            label: 'Descargas',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.queue_music_outlined),
-            selectedIcon: Icon(Icons.queue_music),
-            label: 'Listas',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const MiniPlayer(),
+          NavigationBar(
+            selectedIndex: activeTab.index,
+            onDestinationSelected: (index) => ref
+                .read(activeTabProvider.notifier)
+                .select(AppTab.values[index]),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Inicio',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.search_outlined),
+                selectedIcon: Icon(Icons.search),
+                label: 'Buscar',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.play_circle_outline),
+                selectedIcon: Icon(Icons.play_circle),
+                label: 'Reproductor',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.download_outlined),
+                selectedIcon: Icon(Icons.download),
+                label: 'Descargas',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.queue_music_outlined),
+                selectedIcon: Icon(Icons.queue_music),
+                label: 'Listas',
+              ),
+            ],
           ),
         ],
       ),

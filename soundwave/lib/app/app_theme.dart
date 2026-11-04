@@ -155,6 +155,25 @@ class AppTheme {
       thickness: 1,
       space: AppSpacing.s16,
     ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: AppColors.surface,
+      indicatorColor: const Color(0x332DD4BF),
+      labelTextStyle: WidgetStatePropertyAll(
+        AppTextStyles.bodySecondary.copyWith(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
+        ),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? AppColors.accent
+              : AppColors.textSecondary,
+          size: 24,
+        ),
+      ),
+    ),
     iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
     textSelectionTheme: const TextSelectionThemeData(
       cursorColor: AppColors.accent,
