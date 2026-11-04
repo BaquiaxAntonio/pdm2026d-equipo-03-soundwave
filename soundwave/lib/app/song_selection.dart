@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'navigation_provider.dart';
+import '../features/player/providers/player_provider.dart';
 
 /// Stable-ID selection shared by Inicio, Buscar and the Reproductor.
 ///
@@ -21,4 +22,5 @@ class SelectedSongNotifier extends Notifier<String?> {
 void openSongInPlayer(WidgetRef ref, String songId) {
   ref.read(selectedSongIdProvider.notifier).select(songId);
   ref.read(activeTabProvider.notifier).select(AppTab.player);
+  ref.read(playerControllerProvider.notifier).openById(songId);
 }

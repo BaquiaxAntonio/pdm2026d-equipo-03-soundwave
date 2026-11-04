@@ -3,11 +3,19 @@ import 'dart:io';
 import '../../../core/errors/repository_exception.dart';
 import '../../../core/models/song.dart';
 import 'download_input.dart';
+import '../../search/data/commons_api_client.dart' show commonsUserAgent;
 
 class PermittedAudio {
-  const PermittedAudio(this.uri, {required this.downloadAllowed});
+  const PermittedAudio(
+    this.uri, {
+    required this.downloadAllowed,
+    this.sha1,
+    this.size,
+  });
   final Uri uri;
   final bool downloadAllowed;
+  final String? sha1;
+  final int? size;
 }
 
 /// The API owner supplies an explicit permitted URL resolver, never an endpoint
@@ -40,6 +48,7 @@ class HttpAudioDownloader {
       // Resolve redirects through the provider adapter, preserving its permission
       // and scheme checks instead of silently following an unverified location.
       request.followRedirects = false;
+      request.headers.set(HttpHeaders.userAgentHeader, commonsUserAgent);
       final response = await request.close().timeout(timeout);
       if (response.statusCode != HttpStatus.ok) {
         throw RepositoryException(
@@ -51,10 +60,21 @@ class HttpAudioDownloader {
         'audio/wav',
         'audio/x-wav',
         'audio/wave',
+        'audio/ogg',
+        'application/ogg',
+        'audio/opus',
       ].contains(response.headers.contentType?.mimeType)) {
         throw const RepositoryException(
           RepositoryErrorCode.invalidData,
           'Unsupported audio response.',
+        );
+      }
+      if (audio.size != null &&
+          response.contentLength >= 0 &&
+          audio.size != response.contentLength) {
+        throw const RepositoryException(
+          RepositoryErrorCode.invalidData,
+          'Audio length differs from provider metadata.',
         );
       }
       Stream<List<int>> bytes() async* {
@@ -67,7 +87,10 @@ class HttpAudioDownloader {
 
       return DownloadInput(
         bytes(),
-        totalBytes: response.contentLength < 0 ? null : response.contentLength,
+        totalBytes:
+            audio.size ??
+            (response.contentLength < 0 ? null : response.contentLength),
+        expectedSha1: audio.sha1,
         close: () => client.close(force: true),
       );
     } catch (_) {

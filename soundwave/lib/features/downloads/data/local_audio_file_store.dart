@@ -56,8 +56,9 @@ class LocalAudioFileStore implements AudioFileStore {
       );
     }
     // Unique names avoid replacing a previously committed file on a retry.
+    final extension = await audioFileExtension(file);
     final relative =
-        'audio/${_key(songId)}/${p.basename(p.dirname(source))}.audio';
+        'audio/${_key(songId)}/${p.basename(p.dirname(source))}.$extension';
     final target = File(resolve(relative));
     await target.parent.create(recursive: true);
     await file.rename(target.path);

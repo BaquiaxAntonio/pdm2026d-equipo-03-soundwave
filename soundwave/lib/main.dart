@@ -5,12 +5,25 @@ import 'app/navigation_provider.dart';
 import 'features/downloads/download_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
-import 'features/player/providers/player_from_downloads_provider.dart';
+import 'app/playback_integration.dart';
+import 'features/downloads/download_providers.dart';
+import 'features/player/providers/player_can_delete.dart';
 import 'features/playlists/playlist_screen.dart';
 import 'features/search/search_screen.dart';
 
 void main() {
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        canDeleteAudioProvider.overrideWith(
+          (ref) =>
+              (songId) =>
+                  ref.read(playerDeletionGuardProvider).canDelete(songId),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -33,7 +46,7 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Composition point: keep the real playback controller fed from the
     // completed downloads instead of relying on test overrides.
-    ref.watch(playerFromDownloadsProvider);
+    ref.watch(playbackIntegrationProvider);
     final activeTab = ref.watch(activeTabProvider);
     return Scaffold(
       body: IndexedStack(

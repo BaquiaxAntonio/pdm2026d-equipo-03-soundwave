@@ -79,10 +79,10 @@ class CommonsAudioAttribution {
 
   final String title;
   final String creator;
-  final String credit;
+  final String? credit;
   final Uri sourcePageUrl;
   final String licenseName;
-  final Uri licenseUrl;
+  final Uri? licenseUrl;
   final String usageTerms;
 }
 
@@ -90,6 +90,7 @@ class CommonsAudioAttribution {
 /// because the download contract cannot persist it yet.
 class CommonsAudioResolution {
   const CommonsAudioResolution({
+    required this.song,
     required this.uri,
     required this.downloadAllowed,
     required this.mimeType,
@@ -99,6 +100,7 @@ class CommonsAudioResolution {
   });
 
   final Uri uri;
+  final Song song;
   final bool downloadAllowed;
   final String mimeType;
   final int fileSizeBytes;
@@ -123,14 +125,6 @@ class CommonsAudioResolver {
       throw const CommonsAudioResolutionException(
         CommonsAudioResolutionFailure.identityMismatch,
         'The song identity does not match its Commons source ID.',
-      );
-    }
-
-    final evidence = _documentedAudioEvidence[song.sourceId];
-    if (evidence == null) {
-      throw const CommonsAudioResolutionException(
-        CommonsAudioResolutionFailure.undocumentedSource,
-        'No reviewed offline permission exists for this Commons file.',
       );
     }
 
@@ -164,33 +158,31 @@ class CommonsAudioResolver {
         mimeType == null ||
         fileSizeBytes == null ||
         sha1 == null ||
-        credit == null ||
         licenseName == null ||
-        licenseUrl == null ||
         usageTerms == null ||
-        item.attributionRequired == null ||
-        item.copyrighted == null ||
-        restrictions == null ||
-        sourcePageUrl == null) {
+        sourcePageUrl == null ||
+        fileSizeBytes <= 0 ||
+        !RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(sha1)) {
       throw const CommonsAudioResolutionException(
         CommonsAudioResolutionFailure.missingMetadata,
         'Commons metadata is insufficient for an offline permission decision.',
       );
     }
 
-    if (licenseName.trim() != evidence.licenseName ||
-        !_sameLicense(licenseUrl, evidence.licenseUrl) ||
-        usageTerms.trim() != evidence.usageTerms ||
-        item.attributionRequired != true ||
-        item.copyrighted != true ||
-        restrictions.trim().isNotEmpty) {
+    if (!hasSupportedCommonsLicense(item) ||
+        (restrictions != null && restrictions.trim().isNotEmpty)) {
       throw const CommonsAudioResolutionException(
         CommonsAudioResolutionFailure.permissionDenied,
-        'Current Commons terms do not match the reviewed offline permission.',
+        'Esta pista no tiene una licencia libre compatible y verificable.',
       );
     }
 
-    if (!_isExpectedHttpsUrl(mediaUrl, evidence)) {
+    if (mediaUrl.scheme != 'https' ||
+        mediaUrl.host != 'upload.wikimedia.org' ||
+        !mediaUrl.path.startsWith('/wikipedia/commons/') ||
+        mediaUrl.userInfo.isNotEmpty ||
+        mediaUrl.hasPort ||
+        mediaUrl.fragment.isNotEmpty) {
       throw const CommonsAudioResolutionException(
         CommonsAudioResolutionFailure.invalidUrl,
         'Commons returned an unapproved audio URL.',
@@ -198,18 +190,23 @@ class CommonsAudioResolver {
     }
     final normalizedMime = mimeType.trim().toLowerCase();
     if (!_transportMimeTypes.contains(normalizedMime) ||
-        fileSizeBytes != evidence.fileSizeBytes ||
-        sha1.trim().toLowerCase() != evidence.sha1 ||
-        item.song.title != evidence.title ||
-        item.song.artist != evidence.creator ||
-        sourcePageUrl != evidence.sourcePageUrl) {
+        !RegExp(
+          r'\.(wav|ogg|oga|opus)$',
+          caseSensitive: false,
+        ).hasMatch(mediaUrl.path)) {
       throw const CommonsAudioResolutionException(
         CommonsAudioResolutionFailure.unsupportedAudio,
-        'Current file metadata no longer matches the reviewed WAV evidence.',
+        'El formato de esta pista todavía no es compatible (WAV u Ogg).',
       );
     }
 
     return CommonsAudioResolution(
+      song: Song.fromMap({
+        ...item.song.toMap(),
+        'license': licenseName,
+        'attribution': credit,
+        'license_url': licenseUrl?.toString(),
+      }),
       uri: mediaUrl,
       downloadAllowed: true,
       mimeType: normalizedMime,
@@ -228,72 +225,37 @@ class CommonsAudioResolver {
   }
 }
 
-const _transportMimeTypes = {'audio/wav', 'audio/x-wav', 'audio/wave'};
-
-bool _sameLicense(Uri actual, String expected) {
-  final normalizedPath = actual.path.endsWith('/')
-      ? actual.path.substring(0, actual.path.length - 1)
-      : actual.path;
-  final expectedUri = Uri.parse(expected);
-  return actual.scheme == 'https' &&
-      actual.host == expectedUri.host &&
-      normalizedPath == expectedUri.path &&
-      actual.userInfo.isEmpty &&
-      !actual.hasPort &&
-      actual.query.isEmpty &&
-      actual.fragment.isEmpty;
-}
-
-bool _isExpectedHttpsUrl(Uri uri, _CommonsAudioEvidence evidence) =>
-    uri.scheme == 'https' &&
-    uri.host == evidence.mediaHost &&
-    uri.path == evidence.mediaPath &&
-    uri.userInfo.isEmpty &&
-    !uri.hasPort &&
-    uri.fragment.isEmpty;
-
-class _CommonsAudioEvidence {
-  const _CommonsAudioEvidence({
-    required this.title,
-    required this.creator,
-    required this.sourcePageUrl,
-    required this.licenseName,
-    required this.licenseUrl,
-    required this.usageTerms,
-    required this.mediaHost,
-    required this.mediaPath,
-    required this.fileSizeBytes,
-    required this.sha1,
-  });
-
-  final String title;
-  final String creator;
-  final Uri sourcePageUrl;
-  final String licenseName;
-  final String licenseUrl;
-  final String usageTerms;
-  final String mediaHost;
-  final String mediaPath;
-  final int fileSizeBytes;
-  final String sha1;
-}
-
-final _documentedAudioEvidence = <String, _CommonsAudioEvidence>{
-  '157450501': _CommonsAudioEvidence(
-    title: 'Welcome to Noxville',
-    creator: 'Sir Goose of Honker',
-    sourcePageUrl: Uri.parse(
-      'https://commons.wikimedia.org/wiki/File:Welcome_to_Noxville.wav',
-    ),
-    licenseName: 'CC BY 4.0',
-    licenseUrl: 'https://creativecommons.org/licenses/by/4.0',
-    usageTerms: 'Creative Commons Attribution 4.0',
-    mediaHost: 'upload.wikimedia.org',
-    mediaPath: '/wikipedia/commons/7/76/Welcome_to_Noxville.wav',
-    fileSizeBytes: 647212,
-    sha1: 'd7eec8429fe6ecb42aaaa6886353406f562a1e0b',
-  ),
+const _transportMimeTypes = {
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/ogg',
+  'application/ogg',
+  'audio/opus',
 };
+
+/// Licenses permitting redistribution, with provider metadata retained as-is.
+/// This is evaluated from fresh file metadata rather than a hard-coded song ID.
+bool hasSupportedCommonsLicense(CommonsCatalogItem item) {
+  if (item.restrictions?.trim().isNotEmpty ?? false) return false;
+  if (item.licenseShortName?.toLowerCase() == 'public domain' &&
+      item.copyrighted == false) {
+    return true;
+  }
+  final uri = item.licenseUrl;
+  if (uri == null ||
+      uri.scheme != 'https' ||
+      uri.host != 'creativecommons.org' ||
+      uri.userInfo.isNotEmpty ||
+      uri.hasPort ||
+      uri.hasQuery ||
+      uri.hasFragment) {
+    return false;
+  }
+  return RegExp(
+    r'^/(licenses/(by|by-sa)/(1\.0|2\.0|2\.5|3\.0|4\.0)|publicdomain/zero/1\.0)/?$',
+  ).hasMatch(uri.path);
+}
 
 abstract interface class CommonsCatalogSource {
   Future<List<CommonsCatalogItem>> search(String query);
@@ -326,14 +288,16 @@ class CommonsApiClient implements CommonsCatalogSource {
       'format': 'json',
       'formatversion': '2',
       'generator': 'search',
-      'gsrsearch': normalizedQuery,
+      'gsrsearch': '$normalizedQuery filetype:audio',
       'gsrnamespace': '6',
       'gsrlimit': '20',
       'prop': 'imageinfo',
       'iiprop': _imageInfoProperties,
       'iiextmetadatafilter': _extendedMetadataFields,
     });
-    return _parseItems(response).where(_isAudioItem).toList(growable: false);
+    return _parseItems(response)
+        .where((item) => _isAudioItem(item) && hasSupportedCommonsLicense(item))
+        .toList(growable: false);
   }
 
   @override
@@ -475,7 +439,7 @@ class CommonsApiClient implements CommonsCatalogSource {
   }
 
   bool _isAudioItem(CommonsCatalogItem item) =>
-      item.mimeType?.toLowerCase().startsWith('audio/') ?? false;
+      _transportMimeTypes.contains(item.mimeType?.toLowerCase());
 
   List<CommonsCatalogItem> _parseItems(Object? response) {
     try {
