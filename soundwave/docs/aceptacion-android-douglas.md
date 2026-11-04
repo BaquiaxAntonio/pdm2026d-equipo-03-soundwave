@@ -19,8 +19,8 @@ que debe adjuntarse al PR de entrega.
   navegación compartida de #36 (`activeTabProvider` + `IndexedStack`). No se
   restauraron pantallas placeholder ni se duplicaron rutas.
 - **Composición real:** `MainShell` mantiene activo
-  `playerFromDownloadsProvider`, de modo que el controlador de reproducción se
-  alimenta de las descargas reales sin overrides de pruebas.
+  `playbackIntegrationProvider`, que conecta el controlador de reproducción con
+  las descargas reales sin overrides de pruebas.
 - **Android:** permiso de Internet en el manifiesto principal (antes solo
   existía en debug/profile, por lo que una APK release no podía consultar
   Commons), nombre visible **SoundWave**, identificador
@@ -34,7 +34,7 @@ que debe adjuntarse al PR de entrega.
 | Catálogo de Buscar (Wikimedia Commons) | Real (red) |
 | Biblioteca de Inicio y Descargas | Real (SQLite + archivos descargados) |
 | Selección por ID y navegación entre pestañas | Real |
-| Selección desde Inicio dentro de la pestaña Reproductor | **Parcial**: la canción se elige por ID y, si aún no está en la cola visible del reproductor, se informa al usuario. La sustitución del motor simulado por audio real y la unificación de la cola es la tarea 2.3 (Ramos). |
+| Selección desde Inicio dentro de la pestaña Reproductor | Real: `openById` resuelve la descarga local o el catálogo, añade la pista a la cola y reproduce el audio. Verificado en Android. |
 | Modo demostración (web/escritorio) | Mock identificado con la etiqueta «Modo demostración» |
 
 ## 3. Configuración Android de entrega
@@ -74,23 +74,46 @@ Ejecutar sobre el commit final de `main`, en un emulador o dispositivo real.
 
 ## 5. Evidencia reproducible
 
-Completar en el PR de entrega:
+Datos de la ejecución de aceptación:
 
 | Dato | Valor |
 | --- | --- |
-| Commit | |
-| Fecha | |
-| Dispositivo / emulador | |
-| Versión de Android | |
-| APK (build/flavor) | |
-| Resultado del recorrido | |
-| Errores observados | |
-| Capturas o video | |
+| Commit | `257ca458e1b2614a46c01337254d9a7166e41d7b` |
+| Fecha | 2026-11-03 22:45 |
+| Dispositivo / emulador | HONOR ABR-NX3 (físico) |
+| Versión de Android | Android 16 (API 36), arm64-v8a |
+| APK (build/flavor) | `app-release.apk` (release, 52.4 MB), instalada con `adb install -r` |
+| Resultado del recorrido | Completo (11/11 pasos). Audio local real, persistencia tras cierre forzado, modo avión y Deshacer verificados. |
+| Errores observados | (1) La etiqueta «Reproductor» de la barra inferior se parte en dos líneas. (2) «Deshacer» dura 4 s; si se agota, la descarga se borra definitivamente. (3) Sin red, Buscar muestra caché o vacío, no un error explícito. (4) La APK release se firmó con la clave de depuración al no existir `android/key.properties`. |
+| Capturas o video | 11 capturas en `docs/evidencia/` (ver detalle abajo) |
+
+### Capturas del recorrido
+
+1. `evidencia/01-inicio-vacio.png` — Inicio vacío tras instalación limpia.
+2. `evidencia/02-inicio-biblioteca-real.png` — Inicio con «Blue Danube» tras la descarga.
+3. `evidencia/03-reproductor-local.png` — reproductor con audio local, `0:15 / 7:18`.
+4. `evidencia/04-cola-seek.png` — seek a `0:43` y cola de reproducción.
+5. `evidencia/05-persistencia-reinicio.png` — Inicio tras cierre forzado y reapertura.
+6. `evidencia/06-modo-avion.png` — reproducción con modo avión activo.
+7. `evidencia/07-descarga-eliminada.png` — Descargas vacía con «Deshacer».
+8. `evidencia/08-descarga-restaurada.png` — Descargas con 1 canción restaurada.
+9. `evidencia/09-inicio-tras-deshacer.png` — Inicio coherente tras Deshacer.
+10. `evidencia/10-buscar-offline-cache.png` — Buscar sin red con caché.
+11. `evidencia/11-buscar-offline-vacio.png` — Buscar sin red sin resultados.
 
 ## 6. Limitaciones conocidas
 
-- La cola visible del Reproductor aún se alimenta de datos de laboratorio; la
-  entrega de audio real corresponde a la tarea 2.3. Inicio ya entrega el ID
-  estable y el controlador compartido se mantiene activo en la composición.
+- La APK de esta prueba se firmó con la clave de depuración porque no existe
+  `android/key.properties`. Para una entrega firmada hay que crear el keystore y
+  ese archivo (no versionado) y recompilar con `flutter build apk --release`.
+- «Deshacer» solo está disponible durante 4 segundos
+  (`downloadUndoDurationProvider`). Si se agota, la descarga y el archivo se
+  eliminan definitivamente. En la demostración hay que pulsarlo de inmediato.
+- En la barra de navegación inferior, la etiqueta «Reproductor» se parte en dos
+  líneas y se solapa ligeramente con los iconos en este dispositivo
+  (HONOR ABR-NX3, 1080×2412, densidad 480).
+- Sin conexión, Buscar recurre a los resultados consultados anteriormente; si no
+  hay caché muestra «No encontramos canciones». No se presenta un estado de
+  error de red explícito con reintento.
 - El modo demostración (Chrome/escritorio) no usa SQLite ni descargas reales y
   se identifica en pantalla.
